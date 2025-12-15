@@ -13,7 +13,7 @@ jobs:
       - name: Notify main repository of backend update
         uses: peter-evans/repository-dispatch@v2
         with:
-          token: \${{ secrets.PAT_TOKEN }}
+          token: ${{ secrets.PAT_TOKEN }}
           repository: himanshu077/testriser
           event-type: backend-updated
-          client-payload: '{"ref": "\${{ github.ref }}", "sha": "\${{ github.sha }}"}'
+          client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
