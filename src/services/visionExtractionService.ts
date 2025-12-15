@@ -197,8 +197,8 @@ export class VisionExtractionService {
         console.log(`   📁 Created temp directory: ${this.tempDir}`);
       }
 
-      // Use pdftoppm to convert PDF to images
-      await execAsync(`/opt/homebrew/bin/pdftoppm -png -r 300 "${pdfPath}" "${path.join(this.tempDir, 'page')}"`);
+      // Use pdftoppm to convert PDF to images (uses system PATH)
+      await execAsync(`pdftoppm -png -r 300 "${pdfPath}" "${path.join(this.tempDir, 'page')}"`);
 
       // Get list of generated images
       const files = await fs.readdir(this.tempDir);
