@@ -48,6 +48,12 @@ router.delete('/questions/:id/diagram', questionsController.deleteQuestionDiagra
 router.post('/questions/:id/generate-diagram', questionsController.generateQuestionDiagram);
 router.post('/questions/:id/crop-diagram', questionsController.cropQuestionDiagram);
 
+// Question review/approval routes
+router.get('/questions/pending/count', questionsController.getPendingCount);
+router.patch('/questions/:id/approve', questionsController.approveQuestion);
+router.patch('/questions/:id/reject', questionsController.rejectQuestion);
+router.post('/questions/bulk-approve', questionsController.bulkApproveQuestions);
+
 // ============================================================================
 // MOCK TESTS ROUTES
 // ============================================================================

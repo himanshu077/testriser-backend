@@ -457,8 +457,8 @@ export async function uploadPDFQuestions(req: Request, res: Response) {
       return res.status(HTTP_STATUS.BAD_REQUEST).json({ error: 'No PDF file uploaded' });
     }
 
-    // Validate subject
-    const { subject, topic, paperId } = req.body;
+    // Validate subject and check if AI enhancement is requested
+    const { subject, topic, paperId, useAI } = req.body;
     if (!subject) {
       // Clean up uploaded file
       if (fs.existsSync(file.path)) {
@@ -469,8 +469,10 @@ export async function uploadPDFQuestions(req: Request, res: Response) {
       });
     }
 
+    const enableAI = useAI === 'true' || useAI === true;
     console.log('📄 Processing PDF:', file.filename);
     console.log('📚 Subject:', subject);
+    console.log('🤖 AI Enhancement:', enableAI ? 'ENABLED' : 'DISABLED');
 
     // Parse PDF
     const pdfText = await PDFParserService.parsePDF(file.path);
@@ -480,14 +482,39 @@ export async function uploadPDFQuestions(req: Request, res: Response) {
     const extractedQuestions = await PDFParserService.extractQuestions(pdfText, subject);
     console.log('✅ Questions extracted:', extractedQuestions.length);
 
-    // Save questions to database
+    // Save questions to database with optional AI enhancement
     const savedQuestions: any[] = [];
+    const visionService = enableAI ? new VisionExtractionService() : null;
+
     for (const q of extractedQuestions) {
+      let enhancedMetadata = null;
+
+      // Use AI to generate explanation and enhance metadata if enabled
+      if (enableAI && visionService) {
+        try {
+          console.log(`🤖 Enhancing Q${savedQuestions.length + 1} with AI...`);
+          enhancedMetadata = await visionService.generateQuestionMetadata({
+            questionText: q.questionText,
+            optionA: q.optionA,
+            optionB: q.optionB,
+            optionC: q.optionC,
+            optionD: q.optionD,
+            correctAnswer: q.correctAnswer,
+            subject: subject,
+            topic: topic || q.topic,
+            difficulty: q.difficulty,
+          });
+        } catch (aiError) {
+          console.error(`⚠️  AI enhancement failed for Q${savedQuestions.length + 1}:`, aiError);
+        }
+      }
+
       const [savedQuestion] = await db
         .insert(questions)
         .values({
-          subject: subject as 'physics' | 'chemistry' | 'biology',
-          topic: topic || q.topic || '',
+          subject: (enhancedMetadata?.subject || subject) as 'physics' | 'chemistry' | 'biology',
+          topic: enhancedMetadata?.topic || topic || q.topic || '',
+          subtopic: enhancedMetadata?.subtopic || q.subtopic || null,
           paperId: paperId || null,
           questionText: q.questionText,
           questionType: 'single_correct',
@@ -496,8 +523,9 @@ export async function uploadPDFQuestions(req: Request, res: Response) {
           optionC: q.optionC,
           optionD: q.optionD,
           correctAnswer: q.correctAnswer,
-          explanation: q.explanation || null,
-          difficulty: q.difficulty || 'medium',
+          explanation: enhancedMetadata?.explanation || q.explanation || null,
+          difficulty: enhancedMetadata?.difficulty || q.difficulty || 'medium',
+          cognitiveLevel: enhancedMetadata?.cognitiveLevel || null,
           marksPositive: '4.00',
           marksNegative: '1.00',
           questionNumber: savedQuestions.length + 1,
@@ -864,6 +892,148 @@ export async function cropQuestionDiagram(req: Request, res: Response) {
     console.error('Error cropping diagram:', error);
     res.status(HTTP_STATUS.SERVER_ERROR).json({
       error: 'Failed to crop diagram',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+/**
+ * Approve a question (set isActive = true)
+ * PATCH /api/admin/questions/:id/approve
+ */
+export async function approveQuestion(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+
+    const [updatedQuestion] = await db
+      .update(questions)
+      .set({
+        isActive: true,
+        updatedAt: new Date(),
+      })
+      .where(eq(questions.id, id))
+      .returning();
+
+    if (!updatedQuestion) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        error: 'Question not found',
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Question approved successfully',
+      data: updatedQuestion,
+    });
+  } catch (error) {
+    console.error('Error approving question:', error);
+    res.status(HTTP_STATUS.SERVER_ERROR).json({
+      error: 'Failed to approve question',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+/**
+ * Reject a question (set isActive = false)
+ * PATCH /api/admin/questions/:id/reject
+ */
+export async function rejectQuestion(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+
+    const [updatedQuestion] = await db
+      .update(questions)
+      .set({
+        isActive: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(questions.id, id))
+      .returning();
+
+    if (!updatedQuestion) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        error: 'Question not found',
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Question rejected successfully',
+      data: updatedQuestion,
+    });
+  } catch (error) {
+    console.error('Error rejecting question:', error);
+    res.status(HTTP_STATUS.SERVER_ERROR).json({
+      error: 'Failed to reject question',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+/**
+ * Bulk approve questions
+ * POST /api/admin/questions/bulk-approve
+ * Body: { questionIds: string[] } or { bookId: string } to approve all questions from a book
+ */
+export async function bulkApproveQuestions(req: Request, res: Response) {
+  try {
+    const { questionIds, bookId } = req.body;
+
+    let condition;
+    if (questionIds && Array.isArray(questionIds)) {
+      // Approve specific questions by IDs
+      condition = sql`id = ANY(${questionIds})`;
+    } else if (bookId) {
+      // Approve all questions from a book
+      condition = eq(questions.bookId, bookId);
+    } else {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        error: 'Either questionIds array or bookId is required',
+      });
+    }
+
+    const result = await db
+      .update(questions)
+      .set({
+        isActive: true,
+        updatedAt: new Date(),
+      })
+      .where(condition);
+
+    res.json({
+      success: true,
+      message: `Questions approved successfully`,
+      data: { updated: result.rowCount || 0 },
+    });
+  } catch (error) {
+    console.error('Error bulk approving questions:', error);
+    res.status(HTTP_STATUS.SERVER_ERROR).json({
+      error: 'Failed to bulk approve questions',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+/**
+ * Get pending questions count (for review badge)
+ * GET /api/admin/questions/pending/count
+ */
+export async function getPendingCount(req: Request, res: Response) {
+  try {
+    const [result] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(questions)
+      .where(eq(questions.isActive, false));
+
+    res.json({
+      success: true,
+      data: { pendingCount: result.count || 0 },
+    });
+  } catch (error) {
+    console.error('Error getting pending count:', error);
+    res.status(HTTP_STATUS.SERVER_ERROR).json({
+      error: 'Failed to get pending count',
       message: error instanceof Error ? error.message : 'Unknown error',
     });
   }

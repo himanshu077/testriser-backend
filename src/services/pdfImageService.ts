@@ -223,13 +223,13 @@ export class PDFImageService {
   ): Promise<Map<number, ExtractedDiagramImage[]>> {
     console.log(`\n📊 Extracting embedded diagrams from PDF...`);
     const diagramsByPage = new Map<number, ExtractedDiagramImage[]>();
+    const tempDir = path.join(this.DIAGRAM_IMAGES_DIR, `temp-${bookId}`);
 
     try {
       // Ensure output directory exists
       await fs.mkdir(this.DIAGRAM_IMAGES_DIR, { recursive: true });
 
       // Create a temp directory for this extraction
-      const tempDir = path.join(this.DIAGRAM_IMAGES_DIR, `temp-${bookId}`);
       await fs.mkdir(tempDir, { recursive: true });
 
       // First, get the list of images with their page numbers and dimensions
@@ -338,16 +338,6 @@ export class PDFImageService {
         }
       }
 
-      // Clean up temp directory
-      try {
-        for (const file of await fs.readdir(tempDir)) {
-          await fs.unlink(path.join(tempDir, file));
-        }
-        await fs.rmdir(tempDir);
-      } catch (e) {
-        // Ignore cleanup errors
-      }
-
       console.log(`   📊 Processing summary:`);
       console.log(`      - Processed ${processedWithWhiteBg} images with white background fix`);
       console.log(`      - Skipped ${skippedWatermark} watermarks`);
@@ -359,6 +349,18 @@ export class PDFImageService {
     } catch (error: any) {
       console.error(`❌ Failed to extract embedded diagrams:`, error.message);
       return diagramsByPage;
+    } finally {
+      // Clean up temp directory - ALWAYS runs even if there's an error
+      try {
+        const files = await fs.readdir(tempDir).catch(() => []);
+        for (const file of files) {
+          await fs.unlink(path.join(tempDir, file)).catch(() => {});
+        }
+        await fs.rmdir(tempDir).catch(() => {});
+        console.log(`   🧹 Cleaned up temp directory: ${tempDir}`);
+      } catch (e) {
+        console.warn(`   ⚠️  Failed to cleanup temp directory: ${tempDir}`);
+      }
     }
   }
 

@@ -21,13 +21,21 @@ export const userRoleEnum = pgEnum('user_role', ['admin', 'student']);
 // Question difficulty enum
 export const difficultyEnum = pgEnum('difficulty', ['easy', 'medium', 'hard']);
 
-// Question type enum
+// Question type enum (answer format)
 export const questionTypeEnum = pgEnum('question_type', [
   'single_correct',
   'multiple_correct',
   'assertion_reason',
   'integer_type',
   'match_list',
+]);
+
+// Cognitive level enum (what skill the question tests)
+export const cognitiveLevelEnum = pgEnum('cognitive_level', [
+  'fact',
+  'conceptual',
+  'numerical',
+  'assertion',
 ]);
 
 // Exam status enum
@@ -191,17 +199,86 @@ export const books = pgTable('books', {
   filename: varchar('filename', { length: 500 }).notNull(), // Original filename
   filePath: text('file_path').notNull(), // Path where file is stored
   fileSize: integer('file_size').notNull(), // File size in bytes
+  fileHash: varchar('file_hash', { length: 64 }), // SHA-256 hash for duplicate detection
+  examName: varchar('exam_name', { length: 255 }), // AI-extracted exam name (e.g., "NEET", "JEE Main")
+  examYear: integer('exam_year'), // AI-extracted year (e.g., 2024)
   subject: varchar('subject', { length: 50 }), // Subject code from subjects table
   bookType: bookTypeEnum('book_type').notNull().default('standard'), // PYQ or Standard book
   pyqType: pyqTypeEnum('pyq_type'), // Subject-wise or Full length (only for PYQ books)
   uploadStatus: bookUploadStatusEnum('upload_status').notNull().default('pending'),
   totalQuestionsExtracted: integer('total_questions_extracted').default(0),
+  extractionProgress: integer('extraction_progress').default(0), // 0-100%
+  currentStep: varchar('current_step', { length: 100 }), // e.g., 'Extracting page 5/27'
   uploadedBy: uuid('uploaded_by').references(() => users.id, { onDelete: 'set null' }),
   processingStartedAt: timestamp('processing_started_at'),
   processingCompletedAt: timestamp('processing_completed_at'),
   errorMessage: text('error_message'), // Error details if processing failed
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// ============================================================================
+// API COST TRACKING TABLE
+// ============================================================================
+
+export const apiCostTracking = pgTable('api_cost_tracking', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  bookId: uuid('book_id').references(() => books.id, { onDelete: 'cascade' }),
+  apiProvider: varchar('api_provider', { length: 50 }).notNull(), // 'openai', 'gemini'
+  modelName: varchar('model_name', { length: 100 }).notNull(),
+  operationType: varchar('operation_type', { length: 50 }).notNull(), // 'page_analysis', 'diagram'
+  inputTokens: integer('input_tokens').default(0),
+  outputTokens: integer('output_tokens').default(0),
+  totalTokens: integer('total_tokens').default(0),
+  estimatedCostUsd: varchar('estimated_cost_usd', { length: 20 }), // Stored as string for precision
+  pageNumber: integer('page_number'),
+  success: boolean('success').default(true),
+  errorMessage: text('error_message'),
+  processingTimeMs: integer('processing_time_ms'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// ============================================================================
+// PAGE-LEVEL EXTRACTION TRACKING
+// ============================================================================
+
+export const pageExtractionResults = pgTable('page_extraction_results', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  bookId: uuid('book_id')
+    .references(() => books.id, { onDelete: 'cascade' })
+    .notNull(),
+  pageNumber: integer('page_number').notNull(),
+  pageImagePath: text('page_image_path'),
+  status: varchar('status', { length: 20 }).notNull(), // 'success', 'partial', 'failed'
+  questionsExtracted: integer('questions_extracted').default(0),
+  expectedQuestionRange: varchar('expected_question_range', { length: 50 }), // "Q1-Q10"
+  extractedQuestions: text('extracted_questions'), // JSON: [1,2,3,4,5,6,7,8,9,10]
+  missingQuestions: text('missing_questions'), // JSON: []
+  errorMessage: text('error_message'),
+  apiCost: varchar('api_cost', { length: 20 }), // Decimal stored as string
+  processingTimeMs: integer('processing_time_ms'),
+  retryCount: integer('retry_count').default(0),
+  lastRetryAt: timestamp('last_retry_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// ============================================================================
+// SECTION-LEVEL EXTRACTION TRACKING
+// ============================================================================
+
+export const sectionExtractionResults = pgTable('section_extraction_results', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  bookId: uuid('book_id')
+    .references(() => books.id, { onDelete: 'cascade' })
+    .notNull(),
+  subject: varchar('subject', { length: 50 }).notNull(),
+  startPage: integer('start_page').notNull(),
+  endPage: integer('end_page').notNull(),
+  expectedQuestions: integer('expected_questions').notNull(),
+  extractedQuestions: integer('extracted_questions').notNull(),
+  missingQuestionNumbers: text('missing_question_numbers'), // JSON: [13, 36, 56]
+  status: varchar('status', { length: 20 }).notNull(), // 'complete', 'partial', 'failed'
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
 // ============================================================================
@@ -223,6 +300,7 @@ export const questions = pgTable('questions', {
   questionText: text('question_text').notNull(),
   questionImage: text('question_image'), // URL to question image if any
   questionType: questionTypeEnum('question_type').notNull().default('single_correct'),
+  cognitiveLevel: cognitiveLevelEnum('cognitive_level'), // What skill does this question test?
   optionA: text('option_a'),
   optionB: text('option_b'),
   optionC: text('option_c'),
@@ -231,7 +309,7 @@ export const questions = pgTable('questions', {
   optionBImage: text('option_b_image'),
   optionCImage: text('option_c_image'),
   optionDImage: text('option_d_image'),
-  correctAnswer: text('correct_answer').notNull(), // "A", "B", "C", "D", "AB", "1234" for integer type
+  correctAnswer: text('correct_answer'), // "A", "B", "C", "D", "AB", "1234" for integer type - nullable since we may not have answer key
   explanation: text('explanation'),
   explanationImage: text('explanation_image'),
   marksPositive: decimal('marks_positive', { precision: 4, scale: 2 }).notNull().default('4.00'), // +4 for correct

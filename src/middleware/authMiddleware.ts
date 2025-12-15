@@ -111,3 +111,56 @@ export const requireAdmin = requireRole(['admin']);
  * Example: router.get('/student/exams', authenticate, requireStudent, getExamsController)
  */
 export const requireStudent = requireRole(['student']);
+
+/**
+ * Middleware for SSE authentication via query parameter
+ * Used for EventSource connections which cannot send custom headers
+ *
+ * Usage: router.get('/stream', authenticateSSE, requireRole(['admin']), handler)
+ */
+export async function authenticateSSE(req: Request, res: Response, next: NextFunction) {
+  try {
+    // Get token from query parameter
+    const token = req.query.token as string;
+
+    if (!token) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'No token provided in query parameter',
+      });
+    }
+
+    // Verify JWT token
+    const decoded = jwt.verify(token, JWT_SECRET) as {
+      id: string;
+      email: string;
+      role: 'admin' | 'student';
+    };
+
+    // Get full user details from database
+    const [user] = await db.select().from(users).where(eq(users.id, decoded.id)).limit(1);
+
+    if (!user) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'User not found',
+      });
+    }
+
+    // Attach user to request
+    req.user = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    };
+
+    next();
+  } catch (error) {
+    console.error('SSE Authentication error:', error);
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Authentication failed',
+    });
+  }
+}

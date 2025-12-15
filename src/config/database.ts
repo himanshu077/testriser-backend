@@ -19,10 +19,11 @@ export const client = postgres(connectionString, {
     connectionString.includes('supabase.com') || connectionString.includes('amazonaws.com')
       ? 'require'
       : 'prefer',
-  max: 10, // Maximum connections in pool
-  idle_timeout: 20, // Close idle connections after 20s
+  max: 3, // Reduced for Transaction pooler mode - Supabase handles pooling
+  idle_timeout: 10, // Close idle connections after 10s
   connect_timeout: 10, // Connection timeout
-  max_lifetime: 60 * 30, // Close connections after 30 minutes
+  max_lifetime: 60 * 10, // Close connections after 10 minutes (shorter for transaction mode)
+  prepare: false, // CRITICAL: Disable prepared statements for Transaction pooler
   onnotice: () => {}, // Suppress notices in production
 
   // Debug mode for development
@@ -47,7 +48,7 @@ export function getConnectionStats() {
   return {
     totalConnections: connectionCount,
     totalQueries: queryCount,
-    maxConnections: 10,
+    maxConnections: 3,
   };
 }
 

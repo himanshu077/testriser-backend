@@ -64,6 +64,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Serve uploaded images statically
 app.use('/uploads', express.static('uploads'));
+app.use('/temp-vision', express.static('temp-vision'));
 
 /**
  * @swagger
@@ -116,8 +117,8 @@ app.get('/api-docs.json', (req: Request, res: Response) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/admin/books', booksRoutes); // Books management (admin only) - MUST come before /api/admin
 app.use('/api/admin', adminRoutes);
-app.use('/api/admin/books', booksRoutes); // Books management (admin only)
 app.use('/api/students', studentsRoutes); // Students management (admin only)
 app.use('/api/student', studentRoutes);
 app.use('/api/exam', examRoutes);
