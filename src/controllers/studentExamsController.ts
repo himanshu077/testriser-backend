@@ -72,12 +72,7 @@ export async function submitAnswer(req: Request, res: Response) {
     const [exam] = await db
       .select()
       .from(studentExams)
-      .where(
-        and(
-          eq(studentExams.id, examId),
-          eq(studentExams.studentId, studentId)
-        )
-      )
+      .where(and(eq(studentExams.id, examId), eq(studentExams.studentId, studentId)))
       .limit(1);
 
     if (!exam) {
@@ -110,18 +105,15 @@ export async function submitAnswer(req: Request, res: Response) {
     const marksObtained = isCorrect
       ? parseFloat(question.marksPositive)
       : selectedAnswer
-      ? -parseFloat(question.marksNegative)
-      : 0;
+        ? -parseFloat(question.marksNegative)
+        : 0;
 
     // Check if answer already exists (update) or create new
     const existingAnswer = await db
       .select()
       .from(studentAnswers)
       .where(
-        and(
-          eq(studentAnswers.studentExamId, examId),
-          eq(studentAnswers.questionId, questionId)
-        )
+        and(eq(studentAnswers.studentExamId, examId), eq(studentAnswers.questionId, questionId))
       )
       .limit(1);
 
@@ -195,12 +187,7 @@ export async function submitExam(req: Request, res: Response) {
     const [exam] = await db
       .select()
       .from(studentExams)
-      .where(
-        and(
-          eq(studentExams.id, examId),
-          eq(studentExams.studentId, studentId)
-        )
-      )
+      .where(and(eq(studentExams.id, examId), eq(studentExams.studentId, studentId)))
       .limit(1);
 
     if (!exam) {
@@ -226,10 +213,7 @@ export async function submitExam(req: Request, res: Response) {
     const incorrectAnswers = answers.filter((a) => !a.isCorrect && a.selectedAnswer).length;
     const unanswered = answers.filter((a) => !a.selectedAnswer).length;
     const markedForReview = answers.filter((a) => a.isMarkedForReview).length;
-    const totalScore = answers.reduce(
-      (sum, a) => sum + parseFloat(a.marksObtained || '0'),
-      0
-    );
+    const totalScore = answers.reduce((sum, a) => sum + parseFloat(a.marksObtained || '0'), 0);
     const totalTimeSpent = answers.reduce((sum, a) => sum + (a.timeSpent || 0), 0);
 
     // Update exam with results
@@ -321,12 +305,7 @@ export async function getExamResult(req: Request, res: Response) {
     const [exam] = await db
       .select()
       .from(studentExams)
-      .where(
-        and(
-          eq(studentExams.id, examId),
-          eq(studentExams.studentId, studentId)
-        )
-      )
+      .where(and(eq(studentExams.id, examId), eq(studentExams.studentId, studentId)))
       .limit(1);
 
     if (!exam) {

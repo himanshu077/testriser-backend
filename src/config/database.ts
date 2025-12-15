@@ -9,7 +9,7 @@ dotenv.config();
 const connectionString = process.env.DATABASE_URL!;
 
 // Connection pool event tracking
-let connectionCount = 0;
+const connectionCount = 0;
 let queryCount = 0;
 
 // Create postgres client with production-ready configuration

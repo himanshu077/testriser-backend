@@ -114,10 +114,7 @@ export async function applyAnswerKey(req: Request, res: Response) {
     }
 
     // Get all questions for this book
-    const bookQuestions = await db
-      .select()
-      .from(questions)
-      .where(eq(questions.bookId, bookId));
+    const bookQuestions = await db.select().from(questions).where(eq(questions.bookId, bookId));
 
     let updatedCount = 0;
     const updateResults = [];

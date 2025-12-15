@@ -5,6 +5,7 @@
     "sourceType": "module",
     "project": "./tsconfig.json"
   },
+  "ignorePatterns": ["drizzle.config.ts", "drizzle.config.prod.ts", "dist/**", "node_modules/**"],
   "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended", "prettier"],
   "plugins": ["@typescript-eslint", "prettier"],
   "rules": {

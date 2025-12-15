@@ -784,9 +784,7 @@ export async function generateQuestionDiagram(req: Request, res: Response) {
     const visionService = new VisionExtractionService();
 
     // Generate diagram using Gemini
-    console.log(
-      `🎨 Generating diagram for Question ${question.questionNumber} using Gemini AI...`
-    );
+    console.log(`🎨 Generating diagram for Question ${question.questionNumber} using Gemini AI...`);
     const diagramPath = await visionService.generateDiagramForQuestion(
       pdfPath,
       question.questionNumber,
@@ -833,11 +831,16 @@ export async function cropQuestionDiagram(req: Request, res: Response) {
     console.log(`   📐 Crop Data:`, cropData);
 
     // Validate crop data
-    if (!cropData || typeof cropData.x !== 'number' || typeof cropData.y !== 'number' ||
-        typeof cropData.width !== 'number' || typeof cropData.height !== 'number') {
+    if (
+      !cropData ||
+      typeof cropData.x !== 'number' ||
+      typeof cropData.y !== 'number' ||
+      typeof cropData.width !== 'number' ||
+      typeof cropData.height !== 'number'
+    ) {
       return res.status(HTTP_STATUS.BAD_REQUEST).json({
         error: 'Invalid crop data',
-        message: 'cropData must contain x, y, width, and height coordinates'
+        message: 'cropData must contain x, y, width, and height coordinates',
       });
     }
 

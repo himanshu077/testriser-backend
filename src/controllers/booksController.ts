@@ -1,6 +1,11 @@
 import { Request, Response } from 'express';
 import { db } from '../config/database';
-import { books, questions, pageExtractionResults, sectionExtractionResults } from '../models/schema';
+import {
+  books,
+  questions,
+  pageExtractionResults,
+  sectionExtractionResults,
+} from '../models/schema';
 import { eq, desc, and, count } from 'drizzle-orm';
 import { HTTP_STATUS } from '../config/constants';
 import { VisionExtractionService } from '../services/visionExtractionService';
@@ -44,7 +49,8 @@ export async function uploadBook(req: Request, res: Response) {
 
     // Fallback to filename if title not detected
     const finalTitle = title || req.file.originalname.replace('.pdf', '');
-    const finalDescription = description || `PYQ questions from ${examName || 'exam'} ${examYear || ''}`.trim();
+    const finalDescription =
+      description || `PYQ questions from ${examName || 'exam'} ${examYear || ''}`.trim();
 
     // Calculate file hash for additional duplicate detection
     console.log('📋 Calculating file hash...');
@@ -69,11 +75,7 @@ export async function uploadBook(req: Request, res: Response) {
 
     // Fallback: Check file hash if exam detection failed
     if (!existingBook) {
-      [existingBook] = await db
-        .select()
-        .from(books)
-        .where(eq(books.fileHash, fileHash))
-        .limit(1);
+      [existingBook] = await db.select().from(books).where(eq(books.fileHash, fileHash)).limit(1);
 
       if (existingBook) {
         console.log(`⚠️  Duplicate file detected: ${existingBook.title} (ID: ${existingBook.id})`);
@@ -89,9 +91,10 @@ export async function uploadBook(req: Request, res: Response) {
       // Return 409 Conflict with details about existing book
       return res.status(409).json({
         error: 'Duplicate Exam',
-        message: examName && examYear
-          ? `${examName} ${examYear} already exists in the system`
-          : 'This PDF already exists in the system',
+        message:
+          examName && examYear
+            ? `${examName} ${examYear} already exists in the system`
+            : 'This PDF already exists in the system',
         details:
           'You must delete the existing book before uploading again, or use the Retry feature if extraction was incomplete.',
         existingBook: {
@@ -372,7 +375,8 @@ export async function updateBook(req: Request, res: Response) {
         subject: subject !== undefined ? subject : book.subject,
         examName: examName !== undefined ? examName : book.examName,
         examYear: examYear !== undefined ? examYear : book.examYear,
-        pyqType: pyqType !== undefined ? (pyqType as 'subject_wise' | 'full_length' | null) : book.pyqType,
+        pyqType:
+          pyqType !== undefined ? (pyqType as 'subject_wise' | 'full_length' | null) : book.pyqType,
         updatedAt: new Date(),
       })
       .where(eq(books.id, id))
@@ -386,7 +390,9 @@ export async function updateBook(req: Request, res: Response) {
 
     res.status(HTTP_STATUS.OK).json({
       success: true,
-      message: startProcessing ? 'Book updated and processing started' : 'Book updated successfully',
+      message: startProcessing
+        ? 'Book updated and processing started'
+        : 'Book updated successfully',
       data: updatedBook,
     });
   } catch (error: any) {
@@ -437,7 +443,7 @@ export async function deleteBook(req: Request, res: Response) {
     const diagramImagesDir = path.join(__dirname, '../../uploads/diagram-images');
     if (fs.existsSync(diagramImagesDir)) {
       const diagramFiles = fs.readdirSync(diagramImagesDir);
-      const bookDiagrams = diagramFiles.filter(file => file.startsWith(`${id}-`));
+      const bookDiagrams = diagramFiles.filter((file) => file.startsWith(`${id}-`));
       for (const file of bookDiagrams) {
         fs.unlinkSync(path.join(diagramImagesDir, file));
       }
@@ -450,7 +456,7 @@ export async function deleteBook(req: Request, res: Response) {
     const questionImagesDir = path.join(__dirname, '../../uploads/question-images');
     if (fs.existsSync(questionImagesDir)) {
       const questionFiles = fs.readdirSync(questionImagesDir);
-      const bookQuestions = questionFiles.filter(file => file.startsWith(`${id}-`));
+      const bookQuestions = questionFiles.filter((file) => file.startsWith(`${id}-`));
       for (const file of bookQuestions) {
         fs.unlinkSync(path.join(questionImagesDir, file));
       }
@@ -633,10 +639,7 @@ export async function getBookExtractionReport(req: Request, res: Response) {
 
     // Get API costs
     const { apiCostTracking } = await import('../models/schema');
-    const costs = await db
-      .select()
-      .from(apiCostTracking)
-      .where(eq(apiCostTracking.bookId, id));
+    const costs = await db.select().from(apiCostTracking).where(eq(apiCostTracking.bookId, id));
 
     // Calculate overview statistics
     const total = questionsData.length;
@@ -720,8 +723,7 @@ export async function getBookExtractionReport(req: Request, res: Response) {
           missingNumbers: missing,
           bySubject,
           expectedTotal: maxQuestion,
-          completionRate:
-            maxQuestion > 0 ? ((total / maxQuestion) * 100).toFixed(1) : '0',
+          completionRate: maxQuestion > 0 ? ((total / maxQuestion) * 100).toFixed(1) : '0',
           totalPages: pageResults.length,
           pagesSuccess,
           pagesPartial,
@@ -948,10 +950,7 @@ export async function retrySection(req: Request, res: Response) {
       .select()
       .from(sectionExtractionResults)
       .where(
-        and(
-          eq(sectionExtractionResults.bookId, id),
-          eq(sectionExtractionResults.subject, subject)
-        )
+        and(eq(sectionExtractionResults.bookId, id), eq(sectionExtractionResults.subject, subject))
       )
       .limit(1);
 

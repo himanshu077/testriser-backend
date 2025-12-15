@@ -219,7 +219,7 @@ IMPORTANT:
       // Analyze first 2 pages to better detect full_length vs subject_wise
       const pagesToAnalyze = pageImages.slice(0, Math.min(2, pageImages.length));
       const imageBase64Array = await Promise.all(
-        pagesToAnalyze.map(page => fs.readFile(page, { encoding: 'base64' }))
+        pagesToAnalyze.map((page) => fs.readFile(page, { encoding: 'base64' }))
       );
 
       const prompt = `Analyze these pages from a PYQ (Previous Year Questions) exam paper and extract ALL metadata.
@@ -282,7 +282,7 @@ OR for subject-wise:
       // Build content array with text prompt + multiple images
       const messageContent: any[] = [
         { type: 'text', text: prompt },
-        ...imageBase64Array.map(base64 => ({
+        ...imageBase64Array.map((base64) => ({
           type: 'image_url',
           image_url: {
             url: `data:image/png;base64,${base64}`,
@@ -319,7 +319,9 @@ OR for subject-wise:
       }
 
       const examInfo = JSON.parse(jsonMatch[0]);
-      console.log(`✅ Detected: ${examInfo.examName || 'Unknown'} ${examInfo.examYear || 'Unknown Year'}`);
+      console.log(
+        `✅ Detected: ${examInfo.examName || 'Unknown'} ${examInfo.examYear || 'Unknown Year'}`
+      );
       console.log(`   Title: ${examInfo.title || 'Not detected'}`);
       console.log(`   Type: ${examInfo.pyqType || 'Not detected'}`);
       console.log(`   Subject: ${examInfo.subject || 'Not detected'}`);
@@ -387,7 +389,11 @@ OR for subject-wise:
         // Update progress (10-70% range for page processing)
         if (bookId) {
           const progressPercent = 10 + (i / pageImages.length) * 60;
-          await this.updateProgress(bookId, progressPercent, `Analyzing page ${i + 1}/${pageImages.length}`);
+          await this.updateProgress(
+            bookId,
+            progressPercent,
+            `Analyzing page ${i + 1}/${pageImages.length}`
+          );
         }
 
         // Pass global offset to maintain sequential numbering across sections
@@ -482,10 +488,11 @@ OR for subject-wise:
         console.log('⚠️ pdftoppm not available, trying alternative methods...');
 
         // Check if it's a pdftoppm not found error
-        if (pdftoppmError.message.includes('not recognized') ||
-            pdftoppmError.message.includes('command not found') ||
-            pdftoppmError.stderr?.includes('not recognized')) {
-
+        if (
+          pdftoppmError.message.includes('not recognized') ||
+          pdftoppmError.message.includes('command not found') ||
+          pdftoppmError.stderr?.includes('not recognized')
+        ) {
           console.log('🔄 Attempting PDF conversion with Node.js fallback...');
           await this.convertPDFWithNodeFallback(pdfPath, workDir);
         } else {
@@ -529,7 +536,7 @@ OR for subject-wise:
           out_dir: workDir,
           out_prefix: 'page',
           page: null, // convert all pages
-          density: 300
+          density: 300,
         };
 
         await pdfPoppler.convert(pdfPath, options);
@@ -549,7 +556,7 @@ OR for subject-wise:
           savePath: workDir,
           format: 'png',
           width: 2480,
-          height: 3508
+          height: 3508,
         });
 
         await convert.bulk(-1); // convert all pages
@@ -561,7 +568,8 @@ OR for subject-wise:
 
       // If all fallbacks fail, provide helpful error message
       console.log('❌ No suitable PDF conversion library found');
-      throw new Error(`
+      throw new Error(
+        `
 PDF conversion requires one of the following tools:
 1. pdftoppm (recommended) - Install poppler-utils
 2. pdf-poppler npm package
@@ -570,8 +578,8 @@ PDF conversion requires one of the following tools:
 For Windows, you can:
 - Install poppler-utils from https://poppler.freedesktop.org/
 - Or run: npm install pdf-poppler pdf2pic
-      `.trim());
-
+      `.trim()
+      );
     } catch (error) {
       console.error('All PDF conversion methods failed:', error);
       throw error;
@@ -650,10 +658,13 @@ For Windows, you can:
       const { books } = require('../models/schema');
       const { eq } = require('drizzle-orm');
 
-      await db.update(books).set({
-        extractionProgress: Math.min(100, Math.round(progress)),
-        currentStep: step,
-      }).where(eq(books.id, bookId));
+      await db
+        .update(books)
+        .set({
+          extractionProgress: Math.min(100, Math.round(progress)),
+          currentStep: step,
+        })
+        .where(eq(books.id, bookId));
     } catch (e) {
       // Don't throw - progress tracking failure shouldn't break extraction
       console.error('⚠️  Failed to update progress:', e);
@@ -1055,7 +1066,10 @@ Please describe:
       } catch (error: any) {
         diagramFailCount++;
         const errorMessage = error.message || String(error);
-        console.error(`      ❌ Q${question.questionNumber}: Failed to extract diagram:`, errorMessage);
+        console.error(
+          `      ❌ Q${question.questionNumber}: Failed to extract diagram:`,
+          errorMessage
+        );
 
         // Set descriptive error message - don't fail the entire extraction
         question.diagramDescription = `[Diagram extraction failed: ${errorMessage.substring(0, 100)}]`;
@@ -1256,7 +1270,9 @@ Keep explanation clear and concise (3-5 sentences).`;
       } else {
         // Estimate which page this question is on (assuming ~7 questions per page)
         targetPage = Math.ceil(questionNumber / 7);
-        console.log(`   📊 Estimated page number: ${targetPage} (based on question ${questionNumber})`);
+        console.log(
+          `   📊 Estimated page number: ${targetPage} (based on question ${questionNumber})`
+        );
       }
 
       const pageIndex = targetPage - 1; // Array is 0-indexed
@@ -1348,7 +1364,9 @@ Please confirm that you can see Question ${questionNumber} and its associated di
   ): Promise<string> {
     try {
       console.log(`   ✂️  Cropping diagram...`);
-      console.log(`   📐 Crop area: x=${cropData.x}, y=${cropData.y}, w=${cropData.width}, h=${cropData.height}`);
+      console.log(
+        `   📐 Crop area: x=${cropData.x}, y=${cropData.y}, w=${cropData.width}, h=${cropData.height}`
+      );
 
       // Read the original image to get its dimensions
       const imageBuffer = await fs.readFile(imagePath);
@@ -1652,7 +1670,7 @@ Please confirm that you can see Question ${questionNumber} and its associated di
   static async processBook(bookId: string, retryCount = 0): Promise<void> {
     const MAX_RETRIES = 2;
     const RETRY_DELAY = 5000; // 5 seconds
-    
+
     // Import db and schema here to avoid circular dependencies
     const { db } = require('../config/database');
     const { books, questions: questionsTable } = require('../models/schema');
@@ -1676,7 +1694,9 @@ Please confirm that you can see Question ${questionNumber} and its associated di
         })
         .where(eq(books.id, bookId));
 
-      console.log(`📚 Processing book: ${book.title} ${retryCount > 0 ? `(Retry ${retryCount}/${MAX_RETRIES})` : ''}`);
+      console.log(
+        `📚 Processing book: ${book.title} ${retryCount > 0 ? `(Retry ${retryCount}/${MAX_RETRIES})` : ''}`
+      );
       console.log(`📄 File: ${book.filePath}`);
 
       // Use Vision API extraction
@@ -1687,10 +1707,13 @@ Please confirm that you can see Question ${questionNumber} and its associated di
       console.log(`✅ Extracted ${questions.length} questions`);
 
       // Save questions to database
-      await db.update(books).set({
-        extractionProgress: 85,
-        currentStep: 'Saving to database',
-      }).where(eq(books.id, bookId));
+      await db
+        .update(books)
+        .set({
+          extractionProgress: 85,
+          currentStep: 'Saving to database',
+        })
+        .where(eq(books.id, bookId));
 
       let savedCount = 0;
       let activeCount = 0;
@@ -1874,7 +1897,9 @@ Please confirm that you can see Question ${questionNumber} and its associated di
         });
 
         if (relevantPages.length > 0) {
-          const pageNums = relevantPages.map((p: any) => p.pageNumber).sort((a: number, b: number) => a - b);
+          const pageNums = relevantPages
+            .map((p: any) => p.pageNumber)
+            .sort((a: number, b: number) => a - b);
           const startPage = Math.min(...pageNums);
           const endPage = Math.max(...pageNums);
 
@@ -1891,7 +1916,12 @@ Please confirm that you can see Question ${questionNumber} and its associated di
           }
 
           const expectedCount = maxQ - minQ + 1;
-          const status = missingInSection.length === 0 ? 'complete' : missingInSection.length < expectedCount / 2 ? 'partial' : 'failed';
+          const status =
+            missingInSection.length === 0
+              ? 'complete'
+              : missingInSection.length < expectedCount / 2
+                ? 'partial'
+                : 'failed';
 
           try {
             await db.insert(sectionExtractionResults).values({
@@ -1905,7 +1935,9 @@ Please confirm that you can see Question ${questionNumber} and its associated di
               status,
             });
 
-            console.log(`   ✅ ${subject}: Pages ${startPage}-${endPage}, ${subjectQuestions.length}/${expectedCount} questions (${status})`);
+            console.log(
+              `   ✅ ${subject}: Pages ${startPage}-${endPage}, ${subjectQuestions.length}/${expectedCount} questions (${status})`
+            );
           } catch (error: any) {
             console.error(`   ❌ Failed to create section for ${subject}:`, error.message);
           }
@@ -1955,16 +1987,17 @@ Please confirm that you can see Question ${questionNumber} and its associated di
       console.error(`Error processing book (attempt ${retryCount + 1}/${MAX_RETRIES + 1}):`, error);
 
       // Check if this is a PDF conversion error and we haven't exceeded retry limit
-      const isPdfConversionError = error.message.includes('Failed to convert PDF to images') || 
-                                   error.message.includes('pdftoppm') ||
-                                   error.message.includes('PDF conversion');
-      
+      const isPdfConversionError =
+        error.message.includes('Failed to convert PDF to images') ||
+        error.message.includes('pdftoppm') ||
+        error.message.includes('PDF conversion');
+
       if (isPdfConversionError && retryCount < MAX_RETRIES) {
         console.log(`🔄 Retrying PDF processing in ${RETRY_DELAY / 1000} seconds...`);
-        
+
         // Wait before retry
-        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-        
+        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
+
         // Recursive retry
         return this.processBook(bookId, retryCount + 1);
       }
@@ -1974,9 +2007,10 @@ Please confirm that you can see Question ${questionNumber} and its associated di
       const { books } = require('../models/schema');
       const { eq } = require('drizzle-orm');
 
-      const errorMessage = retryCount >= MAX_RETRIES 
-        ? `Failed after ${MAX_RETRIES + 1} attempts: ${error.message}`
-        : error.message;
+      const errorMessage =
+        retryCount >= MAX_RETRIES
+          ? `Failed after ${MAX_RETRIES + 1} attempts: ${error.message}`
+          : error.message;
 
       await db
         .update(books)

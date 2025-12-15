@@ -61,9 +61,12 @@ async function cleanupAllTempDirs() {
       const items = await fs.readdir(baseDir);
 
       // Find temp directories (directories starting with 'temp-' or UUID pattern)
-      const tempDirs = items.filter(item => {
+      const tempDirs = items.filter((item) => {
         // Match temp-* or UUID pattern (8-4-4-4-12 hex chars)
-        return item.startsWith('temp-') || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item);
+        return (
+          item.startsWith('temp-') ||
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item)
+        );
       });
 
       if (tempDirs.length === 0) {
@@ -72,7 +75,7 @@ async function cleanupAllTempDirs() {
       }
 
       console.log(`   📋 Found ${tempDirs.length} temp directories to clean:`);
-      tempDirs.forEach(dir => console.log(`      - ${dir}`));
+      tempDirs.forEach((dir) => console.log(`      - ${dir}`));
       console.log('');
 
       // Clean up each temp directory
@@ -98,7 +101,7 @@ async function cleanupAllTempDirs() {
   console.log('✅ Cleanup complete!');
 }
 
-cleanupAllTempDirs().catch(error => {
+cleanupAllTempDirs().catch((error) => {
   console.error('❌ Cleanup failed:', error);
   process.exit(1);
 });

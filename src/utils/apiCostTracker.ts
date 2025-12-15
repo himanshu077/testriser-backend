@@ -33,8 +33,7 @@ export class ApiCostTracker {
         input: 0,
         output: 0,
       };
-      const cost =
-        params.inputTokens * pricing.input + params.outputTokens * pricing.output;
+      const cost = params.inputTokens * pricing.input + params.outputTokens * pricing.output;
 
       await db.insert(apiCostTracking).values({
         bookId: params.bookId,

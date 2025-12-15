@@ -13,10 +13,7 @@ const router = Router();
  */
 router.get('/papers', async (req, res) => {
   try {
-    const publishedPapers = await db
-      .select()
-      .from(papers)
-      .where(eq(papers.status, 'published'));
+    const publishedPapers = await db.select().from(papers).where(eq(papers.status, 'published'));
 
     res.json({
       success: true,
