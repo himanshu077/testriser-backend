@@ -39,3 +39,6 @@ yarn-error.log*
 # Database
 *.db
 *.sqlite
+
+# Claude AI files
+.claude
