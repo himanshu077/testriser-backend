@@ -469,7 +469,6 @@ OR for subject-wise:
   private async convertPDFToImages(pdfPath: string, bookId?: string): Promise<string[]> {
     // Use book-specific directory to avoid conflicts
     const workDir = bookId ? path.join(this.tempDir, bookId) : this.tempDir;
-    const outputPattern = path.join(workDir, 'page-%03d.png');
 
     try {
       // Ensure temp directory exists
@@ -542,7 +541,7 @@ OR for subject-wise:
         await pdfPoppler.convert(pdfPath, options);
         console.log('✅ PDF conversion successful using pdf-poppler fallback');
         return;
-      } catch (popplerError) {
+      } catch {
         console.log('⚠️ pdf-poppler not available');
       }
 
@@ -562,7 +561,7 @@ OR for subject-wise:
         await convert.bulk(-1); // convert all pages
         console.log('✅ PDF conversion successful using pdf2pic fallback');
         return;
-      } catch (pdf2picError) {
+      } catch {
         console.log('⚠️ pdf2pic not available');
       }
 
@@ -801,7 +800,7 @@ Return ONLY a JSON array of questions, nothing else.`;
       const questions: ExtractedQuestion[] = JSON.parse(jsonMatch[0]);
 
       // Validate and fix numbering for section restarts
-      const validatedQuestions = questions.map((q, index) => {
+      const validatedQuestions = questions.map((q) => {
         // If question number <= previousHighestQuestion, this is a section restart
         if (q.questionNumber <= previousHighestQuestion) {
           const originalNumber = q.questionNumber;
@@ -1131,7 +1130,7 @@ Please describe:
       // Remove the now-empty directory
       await fs.rmdir(dirPath).catch(() => {});
       console.log(`   🧹 Cleaned up directory: ${dirPath}`);
-    } catch (error) {
+    } catch {
       // Directory doesn't exist or already cleaned up - ignore
     }
   }

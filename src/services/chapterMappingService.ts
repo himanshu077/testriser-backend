@@ -1,7 +1,7 @@
 import { db } from '../config/database';
 import { questions, curriculumChapters } from '../models/schema';
-import { eq, and, isNull, sql } from 'drizzle-orm';
-import { compareTwoStrings, findBestMatch } from 'string-similarity';
+import { eq, and, isNull } from 'drizzle-orm';
+import { compareTwoStrings } from 'string-similarity';
 
 // ============================================================================
 // TYPES

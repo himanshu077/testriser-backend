@@ -1,9 +1,6 @@
 import * as dotenv from 'dotenv';
 import postgres from 'postgres';
 import bcrypt from 'bcryptjs';
-import { db } from '../config/database';
-import { subjects, curriculumChapters } from '../models/schema';
-import { eq } from 'drizzle-orm';
 
 // Load environment variables
 dotenv.config();

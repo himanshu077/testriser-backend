@@ -131,7 +131,7 @@ async function createSafetyBackup(dbConfig: any): Promise<string> {
     await execAsync(command, { env });
     log.success(`Safety backup created: ${safetyBackupFile}`);
     return safetyBackupPath;
-  } catch (error) {
+  } catch {
     log.warning('Could not create safety backup (database might be empty)');
     return '';
   }
@@ -194,7 +194,7 @@ async function restoreDatabase(backupFile: string): Promise<void> {
 
   try {
     await execAsync(terminateCommand, { env });
-  } catch (error) {
+  } catch {
     log.warning('Could not terminate connections (might be none)');
   }
 
@@ -215,7 +215,7 @@ async function restoreDatabase(backupFile: string): Promise<void> {
   const restoreCommand = `psql -h ${dbConfig.host} -p ${dbConfig.port} -U ${dbConfig.user} -d ${dbConfig.database} -f "${backupPath}"`;
 
   try {
-    const { stdout, stderr } = await execAsync(restoreCommand, { env });
+    const { stderr } = await execAsync(restoreCommand, { env });
 
     if (stderr && !stderr.includes('NOTICE') && !stderr.includes('WARNING')) {
       log.warning(`psql warnings: ${stderr}`);

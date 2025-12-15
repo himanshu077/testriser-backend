@@ -155,7 +155,7 @@ export class PDFParserService {
     // Pattern to match topic headings - "TOPIC X" followed by the topic name on next line
     // The topic name ends before a question number (01, 02, etc.) or another TOPIC
     const topicPattern =
-      /TOPIC\s+(\d+)\s*\n\s*([A-Z][A-Za-z\s,\-]+?)(?=\s*\n\s*(?:\d{2}\s|TOPIC|$))/gi;
+      /TOPIC\s+(\d+)\s*\n\s*([A-Z][A-Za-z\s,-]+?)(?=\s*\n\s*(?:\d{2}\s|TOPIC|$))/gi;
 
     let match;
     let currentChapter = 1;
@@ -340,7 +340,7 @@ export class PDFParserService {
     if (questions.length < 1000) {
       console.log('🔍 Pattern V2b: Tighter formatting...');
       const patternV2b =
-        /(\d{2})([^\[]{10,300})(\[(?:NEET|CBSE\s+AIPMT)[^\]]+\])([^\(]{0,200})\(a\)([^\(]{3,200}?)\(b\)([^\(]{3,200}?)\(c\)([^\(]{3,200}?)\(d\)([^\(]{3,200}?)Ans\.\(([a-d])\)/gi;
+        /(\d{2})([^[]{10,300})(\[(?:NEET|CBSE\s+AIPMT)[^\]]+\])([^(]{0,200})\(a\)([^(]{3,200}?)\(b\)([^(]{3,200}?)\(c\)([^(]{3,200}?)\(d\)([^(]{3,200}?)Ans\.\(([a-d])\)/gi;
 
       patternV2b.lastIndex = 0;
       let extraMatches = 0;
@@ -389,7 +389,7 @@ export class PDFParserService {
     if (questions.length < 1000) {
       console.log('🔍 Pattern V3: Separate line options...');
       const patternV3 =
-        /(\d{2})[\s\S]{10,300}?\[(?:NEET|CBSE\s+AIPMT)[^\]]+\][\s\S]{0,200}?\(a\)[^\n]{5,200}\n[^\(]{0,50}\(b\)[^\n]{5,200}\n[^\(]{0,50}\(c\)[^\n]{5,200}\n[^\(]{0,50}\(d\)[^\n]{5,200}[\s\n]{0,50}Ans\.\(([a-d])\)/gi;
+        /(\d{2})[\s\S]{10,300}?\[(?:NEET|CBSE\s+AIPMT)[^\]]+\][\s\S]{0,200}?\(a\)[^\n]{5,200}\n[^(]{0,50}\(b\)[^\n]{5,200}\n[^(]{0,50}\(c\)[^\n]{5,200}\n[^(]{0,50}\(d\)[^\n]{5,200}[\s\n]{0,50}Ans\.\(([a-d])\)/gi;
 
       patternV3.lastIndex = 0;
       let extraMatches3 = 0;
@@ -401,7 +401,7 @@ export class PDFParserService {
         // Extract components more carefully
         const qMatch = fullMatch.match(/(\d{2})([\s\S]+?)(\[(?:NEET|CBSE\s+AIPMT)[^\]]+\])/);
         const optionsMatch = fullMatch.match(
-          /\(a\)([^\n]+)\n[^\(]{0,50}\(b\)([^\n]+)\n[^\(]{0,50}\(c\)([^\n]+)\n[^\(]{0,50}\(d\)([^\n]+)/
+          /\(a\)([^\n]+)\n[^(]{0,50}\(b\)([^\n]+)\n[^(]{0,50}\(c\)([^\n]+)\n[^(]{0,50}\(d\)([^\n]+)/
         );
         const answerMatch = fullMatch.match(/Ans\.\(([a-d])\)/i);
 

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { db } from '../config/database';
 import { subjects, questions } from '../models/schema';
-import { eq, desc, count } from 'drizzle-orm';
+import { eq, count } from 'drizzle-orm';
 import { HTTP_STATUS } from '../config/constants';
 
 /**

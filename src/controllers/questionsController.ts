@@ -600,7 +600,7 @@ export async function uploadQuestionDiagram(req: Request, res: Response) {
       if (fs.existsSync(oldImagePath)) {
         try {
           fs.unlinkSync(oldImagePath);
-        } catch (e) {
+        } catch {
           // Ignore delete errors
         }
       }
@@ -666,7 +666,7 @@ export async function deleteQuestionDiagram(req: Request, res: Response) {
       if (fs.existsSync(imagePath)) {
         try {
           fs.unlinkSync(imagePath);
-        } catch (e) {
+        } catch {
           // Ignore delete errors
         }
       }

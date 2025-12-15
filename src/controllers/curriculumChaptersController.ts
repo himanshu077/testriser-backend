@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { db } from '../config/database';
 import { curriculumChapters, subjects, questions } from '../models/schema';
-import { eq, and, desc, asc, isNull, sql } from 'drizzle-orm';
+import { eq, and, asc, sql } from 'drizzle-orm';
 import { chapterMappingService } from '../services/chapterMappingService';
 
 // ============================================================================

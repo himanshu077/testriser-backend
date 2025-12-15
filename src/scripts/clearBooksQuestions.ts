@@ -6,11 +6,11 @@ async function clearBooksAndQuestions() {
 
   try {
     // Delete questions first (has foreign key to books)
-    const deletedQuestions = await db.delete(questions);
+    await db.delete(questions);
     console.log('✅ Deleted all questions');
 
     // Delete books
-    const deletedBooks = await db.delete(books);
+    await db.delete(books);
     console.log('✅ Deleted all books');
 
     console.log('\n✅ Done! Tables cleared successfully.');

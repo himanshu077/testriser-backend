@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { db } from '../config/database';
-import { studentExams, studentAnswers, questions, papers, mockTests } from '../models/schema';
+import { studentExams, studentAnswers, questions } from '../models/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { HTTP_STATUS } from '../config/constants';
 

@@ -301,7 +301,7 @@ export class PDFImageService {
                 `magick "${sourcePath}" -background white -alpha remove -alpha off "${destPath}"`
               );
               processedWithWhiteBg++;
-            } catch (magickError) {
+            } catch {
               // Fallback: try with convert command (older ImageMagick)
               try {
                 await execAsync(
@@ -333,7 +333,7 @@ export class PDFImageService {
           }
           diagramsByPage.get(info.page)!.push(diagram);
           validDiagramCount++;
-        } catch (err) {
+        } catch {
           // Skip if file processing fails
         }
       }
@@ -358,7 +358,7 @@ export class PDFImageService {
         }
         await fs.rmdir(tempDir).catch(() => {});
         console.log(`   🧹 Cleaned up temp directory: ${tempDir}`);
-      } catch (e) {
+      } catch {
         console.warn(`   ⚠️  Failed to cleanup temp directory: ${tempDir}`);
       }
     }
@@ -509,7 +509,7 @@ export class PDFImageService {
       if (bookFiles.length > 0) {
         console.log(`🧹 Cleaned up ${bookFiles.length} diagram images for book ${bookId}`);
       }
-    } catch (error) {
+    } catch {
       // Directory might not exist
     }
   }

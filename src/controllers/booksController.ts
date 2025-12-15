@@ -1,11 +1,6 @@
 import { Request, Response } from 'express';
 import { db } from '../config/database';
-import {
-  books,
-  questions,
-  pageExtractionResults,
-  sectionExtractionResults,
-} from '../models/schema';
+import { books, questions, pageExtractionResults } from '../models/schema';
 import { eq, desc, and, count } from 'drizzle-orm';
 import { HTTP_STATUS } from '../config/constants';
 import { VisionExtractionService } from '../services/visionExtractionService';

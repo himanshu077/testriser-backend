@@ -21,11 +21,11 @@ async function cleanQuestions() {
 
   try {
     // Delete all questions
-    const result = await db.delete(schema.questions);
+    await db.delete(schema.questions);
     console.log('✅ Questions table cleaned successfully!');
 
     // Also clean books table to remove uploaded PDFs
-    const booksResult = await db.delete(schema.books);
+    await db.delete(schema.books);
     console.log('✅ Books table cleaned successfully!');
 
     console.log('\n📊 Database is now clean and ready for fresh upload.');

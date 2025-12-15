@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { db } from '../config/database';
 import { users } from '../models/schema';
-import { eq, sql, desc } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 
 /**
  * Get all students with their stats

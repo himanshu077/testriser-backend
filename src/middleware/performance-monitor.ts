@@ -5,7 +5,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { db, client } from '../config/database';
+import { db } from '../config/database';
 import { sql } from 'drizzle-orm';
 
 // Store query metrics
@@ -225,7 +225,7 @@ export function performanceMiddleware(req: Request, res: Response, next: NextFun
  * Add this to drizzle config to track all queries
  */
 export const drizzleLogger = {
-  logQuery(query: string, params: unknown[]): void {
+  logQuery(query: string, _params: unknown[]): void {
     const startTime = Date.now();
 
     // This is a simple logger - in production you'd track actual execution time

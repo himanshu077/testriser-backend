@@ -10,8 +10,9 @@ export async function calculateFileHash(filePath: string): Promise<string> {
   try {
     const fileBuffer = await fs.readFile(filePath);
     return crypto.createHash('sha256').update(fileBuffer).digest('hex');
-  } catch (error: any) {
-    throw new Error(`Failed to calculate file hash: ${error.message}`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(`Failed to calculate file hash: ${message}`);
   }
 }
 
@@ -25,7 +26,7 @@ export async function verifyFileHash(filePath: string, expectedHash: string): Pr
   try {
     const actualHash = await calculateFileHash(filePath);
     return actualHash === expectedHash;
-  } catch (error) {
+  } catch {
     return false;
   }
 }

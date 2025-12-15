@@ -32,9 +32,10 @@ async function cleanupDirectory(dirPath: string): Promise<void> {
     // Remove the now-empty directory
     await fs.rmdir(dirPath);
     console.log(`   🧹 Removed directory: ${dirPath}`);
-  } catch (error: any) {
-    if (error.code !== 'ENOENT') {
-      console.error(`   ❌ Error cleaning ${dirPath}:`, error.message);
+  } catch (error: unknown) {
+    if (error && typeof error === 'object' && 'code' in error && error.code !== 'ENOENT') {
+      const err = error as { code: string; message: string };
+      console.error(`   ❌ Error cleaning ${dirPath}:`, err.message);
     }
   }
 }
@@ -89,11 +90,14 @@ async function cleanupAllTempDirs() {
       }
 
       console.log(`   ✅ Cleaned ${tempDirs.length} directories\n`);
-    } catch (error: any) {
-      if (error.code === 'ENOENT') {
-        console.log(`   ℹ️  Directory doesn't exist (skipping)\n`);
-      } else {
-        console.error(`   ❌ Error:`, error.message, '\n');
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'code' in error) {
+        const err = error as { code: string; message: string };
+        if (err.code === 'ENOENT') {
+          console.log(`   ℹ️  Directory doesn't exist (skipping)\n`);
+        } else {
+          console.error(`   ❌ Error:`, err.message, '\n');
+        }
       }
     }
   }

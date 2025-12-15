@@ -120,7 +120,7 @@ async function createBackup(filename: string): Promise<void> {
   const command = `pg_dump -h ${dbConfig.host} -p ${dbConfig.port} -U ${dbConfig.user} -d ${dbConfig.database} -F p -f "${backupPath}"`;
 
   try {
-    const { stdout, stderr } = await execAsync(command, { env });
+    const { stderr } = await execAsync(command, { env });
 
     if (stderr && !stderr.includes('Warning')) {
       log.warning(`pg_dump warnings: ${stderr}`);
@@ -241,7 +241,7 @@ async function main() {
     console.log('  - View backups: npm run db:backup -- --list');
     console.log('  - Restore backup: npm run db:restore -- --file <filename>');
     console.log('');
-  } catch (error) {
+  } catch {
     console.log('');
     console.log('='.repeat(60));
     log.error('Backup process failed!');

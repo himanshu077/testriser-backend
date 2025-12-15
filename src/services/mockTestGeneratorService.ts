@@ -1,6 +1,6 @@
 import { db } from '../config/database';
-import { questions, subjects } from '../models/schema';
-import { eq, and, sql, inArray, isNotNull } from 'drizzle-orm';
+import { questions } from '../models/schema';
+import { eq, and, sql, inArray } from 'drizzle-orm';
 
 /**
  * Mock Test Generator Service
@@ -39,23 +39,6 @@ const NEET_CONFIG = {
     hard: 0.2, // 20%
   },
 };
-
-interface QuestionSelection {
-  id: string;
-  subject: string;
-  difficulty: string;
-  questionNumber: number;
-}
-
-interface GenerateOptions {
-  testType: 'full_test' | 'subject_wise' | 'chapter_wise';
-  subject?: string; // Required for subject_wise
-  topic?: string; // Required for chapter_wise
-  totalQuestions?: number;
-  excludeQuestionIds?: string[]; // Questions to exclude (already used in other tests)
-  preferPYQ?: boolean; // Prefer PYQ questions
-  yearRange?: { from: number; to: number }; // Filter by year range
-}
 
 interface GeneratedTest {
   questionIds: string[];

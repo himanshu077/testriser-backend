@@ -102,7 +102,7 @@ async function healthCheck() {
 
         const icon = count > 0 ? '✓' : '○';
         console.log(`  ${icon} ${table.padEnd(25)} ${count.toString().padStart(6)} rows`);
-      } catch (error) {
+      } catch {
         console.log(`  ✗ ${table.padEnd(25)} (error reading)`);
       }
     }
