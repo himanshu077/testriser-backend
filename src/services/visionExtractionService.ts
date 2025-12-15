@@ -533,8 +533,8 @@ Begin extraction:`;
 
     console.log(`   📊 Found ${questionsWithDiagrams.length} questions with diagrams`);
 
-    // Get Gemini model (using gemini-pro-vision for image analysis)
-    const model = this.gemini.getGenerativeModel({ model: 'gemini-pro-vision' });
+    // Get Gemini model (using gemini-1.5-flash for image analysis)
+    const model = this.gemini.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     for (const question of questionsWithDiagrams) {
       try {
