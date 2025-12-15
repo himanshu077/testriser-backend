@@ -1,0 +1,26 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running backend pre-commit checks..."
+
+# Run lint-staged for formatting
+echo "📝 Checking code formatting..."
+npx lint-staged
+
+# TypeScript type check
+echo "🔎 Type checking backend..."
+npm run type-check
+if [ $? -ne 0 ]; then
+  echo "❌ Backend TypeScript errors found! Please fix them before committing."
+  exit 1
+fi
+
+# Run ESLint
+echo "🔍 Running ESLint..."
+npm run lint
+if [ $? -ne 0 ]; then
+  echo "❌ ESLint errors found! Please fix them before committing."
+  exit 1
+fi
+
+echo "✅ All backend pre-commit checks passed!"
