@@ -988,6 +988,8 @@ Please confirm that you can see Question ${questionNumber} and its associated di
       let savedCount = 0;
       let activeCount = 0;
       let inactiveCount = 0;
+      let failedCount = 0;
+      const failedQuestions: Array<{ number: number; error: string }> = [];
 
       for (const question of questions) {
         try {
@@ -1032,7 +1034,14 @@ Please confirm that you can see Question ${questionNumber} and its associated di
             );
           }
         } catch (error: any) {
-          console.error(`Failed to save question ${question.questionNumber}:`, error.message);
+          failedCount++;
+          failedQuestions.push({
+            number: question.questionNumber,
+            error: error.message,
+          });
+          console.error(
+            `   ❌ Question ${question.questionNumber} FAILED to save: ${error.message}`
+          );
         }
       }
 
@@ -1088,10 +1097,35 @@ Please confirm that you can see Question ${questionNumber} and its associated di
       console.log(`\n📊 Save Summary:`);
       console.log(`   ✅ Active questions: ${activeCount}`);
       console.log(`   ⚠️  Inactive questions (need review): ${inactiveCount}`);
+      console.log(`   ❌ Failed to save: ${failedCount}`);
       console.log(`   📝 Placeholder questions (missing): ${placeholderCount}`);
       console.log(`   📝 Total saved: ${savedCount + placeholderCount}`);
 
-      // Update book status to completed
+      // Validate save success rate
+      const saveSuccessRate = questions.length > 0 ? (savedCount / questions.length) * 100 : 0;
+      const MINIMUM_SUCCESS_RATE = 50; // At least 50% of questions must save
+
+      if (failedCount > 0 && saveSuccessRate < MINIMUM_SUCCESS_RATE) {
+        // Too many failures - mark as failed
+        const errorSummary = `Failed to save ${failedCount}/${questions.length} questions (${saveSuccessRate.toFixed(1)}% success rate). ` +
+          `First few errors: ${failedQuestions.slice(0, 3).map(q => `Q${q.number}: ${q.error}`).join('; ')}. ` +
+          `This usually indicates a database schema mismatch. Run migrations with 'npm run db:migrate:smart'.`;
+
+        await db
+          .update(books)
+          .set({
+            uploadStatus: 'failed',
+            errorMessage: errorSummary,
+            processingCompletedAt: new Date(),
+            totalQuestionsExtracted: savedCount,
+          })
+          .where(eq(books.id, bookId));
+
+        console.error(`❌ Book processing FAILED: ${errorSummary}`);
+        throw new Error(errorSummary);
+      }
+
+      // Success - mark as completed
       await db
         .update(books)
         .set({
@@ -1101,7 +1135,13 @@ Please confirm that you can see Question ${questionNumber} and its associated di
         })
         .where(eq(books.id, bookId));
 
-      console.log(`✅ Book processing completed: ${savedCount} questions saved`);
+      if (failedCount > 0) {
+        console.log(
+          `⚠️  Book processing completed with warnings: ${savedCount} saved, ${failedCount} failed`
+        );
+      } else {
+        console.log(`✅ Book processing completed: ${savedCount} questions saved`);
+      }
     } catch (error: any) {
       console.error('Error processing book:', error);
 
