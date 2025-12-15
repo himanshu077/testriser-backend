@@ -471,6 +471,15 @@ OR for subject-wise:
     const workDir = bookId ? path.join(this.tempDir, bookId) : this.tempDir;
 
     try {
+      // Check if PDF file exists before processing
+      try {
+        await fs.access(pdfPath);
+      } catch {
+        throw new Error(
+          `PDF file not found at path: ${pdfPath}. The file may have been deleted or moved.`
+        );
+      }
+
       // Ensure temp directory exists
       try {
         await fs.access(workDir);
@@ -1984,6 +1993,34 @@ Please confirm that you can see Question ${questionNumber} and its associated di
       }
     } catch (error: any) {
       console.error(`Error processing book (attempt ${retryCount + 1}/${MAX_RETRIES + 1}):`, error);
+
+      // Check if PDF file not found (don't retry for this error)
+      const isPdfNotFound =
+        error.message.includes('PDF file not found') ||
+        error.message.includes('ENOENT') ||
+        error.message.includes('no such file or directory');
+
+      if (isPdfNotFound) {
+        console.error(
+          '❌ PDF file is missing from disk. This book cannot be processed until the PDF is re-uploaded.'
+        );
+
+        const { db } = require('../config/database');
+        const { books } = require('../models/schema');
+        const { eq } = require('drizzle-orm');
+
+        await db
+          .update(books)
+          .set({
+            uploadStatus: 'failed',
+            errorMessage:
+              'PDF file not found. The file may have been deleted or moved. Please re-upload the PDF to process this book.',
+            processingCompletedAt: new Date(),
+          })
+          .where(eq(books.id, bookId));
+
+        return;
+      }
 
       // Check if this is a PDF conversion error and we haven't exceeded retry limit
       const isPdfConversionError =

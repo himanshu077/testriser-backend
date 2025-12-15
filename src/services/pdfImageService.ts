@@ -226,6 +226,15 @@ export class PDFImageService {
     const tempDir = path.join(this.DIAGRAM_IMAGES_DIR, `temp-${bookId}`);
 
     try {
+      // Check if PDF file exists
+      try {
+        await fs.access(pdfPath);
+      } catch {
+        throw new Error(
+          `PDF file not found at path: ${pdfPath}. The file may have been deleted or moved.`
+        );
+      }
+
       // Ensure output directory exists
       await fs.mkdir(this.DIAGRAM_IMAGES_DIR, { recursive: true });
 
@@ -519,9 +528,23 @@ export class PDFImageService {
    */
   static async getPageCount(pdfPath: string): Promise<number> {
     try {
+      // Check if PDF file exists
+      try {
+        await fs.access(pdfPath);
+      } catch {
+        throw new Error(
+          `PDF file not found at path: ${pdfPath}. The file may have been deleted or moved.`
+        );
+      }
+
       const { stdout } = await execAsync(`pdfinfo "${pdfPath}" | grep Pages | awk '{print $2}'`);
       return parseInt(stdout.trim()) || 0;
-    } catch {
+    } catch (error: any) {
+      // Re-throw file not found errors
+      if (error.message.includes('PDF file not found')) {
+        throw error;
+      }
+
       // Fallback: use pdf-parse if pdfinfo not available
       const pdfParse = require('pdf-parse');
       const dataBuffer = await fs.readFile(pdfPath);

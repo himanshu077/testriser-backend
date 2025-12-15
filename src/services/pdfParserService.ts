@@ -62,12 +62,23 @@ export class PDFParserService {
    */
   static async parsePDF(filePath: string): Promise<string> {
     try {
+      // Check if PDF file exists
+      if (!fs.existsSync(filePath)) {
+        throw new Error(
+          `PDF file not found at path: ${filePath}. The file may have been deleted or moved.`
+        );
+      }
+
       const dataBuffer = fs.readFileSync(filePath);
       // Use pdf-parse v1.x simple API
       const pdfParse = require('pdf-parse');
       const data = await pdfParse(dataBuffer);
       return data.text;
     } catch (error: any) {
+      // Re-throw file not found errors with original message
+      if (error.message.includes('PDF file not found')) {
+        throw error;
+      }
       throw new Error(`Failed to parse PDF: ${error.message}`);
     }
   }
