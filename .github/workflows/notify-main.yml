@@ -1,0 +1,19 @@
+name: Notify Main Repo
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  notify:
+    name: Notify Main Repository
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Notify main repository of backend update
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: \${{ secrets.PAT_TOKEN }}
+          repository: himanshu077/testriser
+          event-type: backend-updated
+          client-payload: '{"ref": "\${{ github.ref }}", "sha": "\${{ github.sha }}"}'
