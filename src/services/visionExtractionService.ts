@@ -191,11 +191,16 @@ IMPORTANT:
   }> {
     console.log('\n🔍 Detecting exam metadata with AI...');
 
+    // Declare variables outside try block for cleanup access
+    let tempBookId: string | undefined;
+    let tempService: VisionExtractionService | undefined;
+    let pageImages: string[] = [];
+
     try {
       // Create temp instance with a temporary book ID for cleanup
-      const tempBookId = `temp-${Date.now()}`;
-      const tempService = new VisionExtractionService();
-      const pageImages = await tempService.convertPDFToImages(pdfPath, tempBookId);
+      tempBookId = `temp-${Date.now()}`;
+      tempService = new VisionExtractionService();
+      pageImages = await tempService.convertPDFToImages(pdfPath, tempBookId);
 
       if (pageImages.length === 0) {
         console.log('⚠️  No pages found');
@@ -334,7 +339,7 @@ OR for subject-wise:
       console.error('❌ Exam detection failed:', error.message);
       // Cleanup temp images on error
       try {
-        if (pageImages && pageImages.length > 0) {
+        if (tempService && pageImages && pageImages.length > 0 && tempBookId) {
           await tempService.cleanup(pageImages, tempBookId);
         }
       } catch (cleanupError) {
@@ -1862,14 +1867,14 @@ Please confirm that you can see Question ${questionNumber} and its associated di
       // Create section results for each subject
       for (const [subject, subjectQuestions] of Object.entries(questionsBySubject)) {
         // Find pages that contain questions from this subject
-        const questionNumbers = subjectQuestions.map((q) => q.questionNumber);
-        const relevantPages = pageResults.filter((page) => {
+        const questionNumbers = subjectQuestions.map((q: any) => q.questionNumber);
+        const relevantPages = pageResults.filter((page: any) => {
           const extractedQuestions = JSON.parse(page.extractedQuestions || '[]');
           return extractedQuestions.some((qNum: number) => questionNumbers.includes(qNum));
         });
 
         if (relevantPages.length > 0) {
-          const pageNums = relevantPages.map((p) => p.pageNumber).sort((a, b) => a - b);
+          const pageNums = relevantPages.map((p: any) => p.pageNumber).sort((a: number, b: number) => a - b);
           const startPage = Math.min(...pageNums);
           const endPage = Math.max(...pageNums);
 

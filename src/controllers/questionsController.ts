@@ -993,7 +993,7 @@ export async function bulkApproveQuestions(req: Request, res: Response) {
       });
     }
 
-    const result = await db
+    await db
       .update(questions)
       .set({
         isActive: true,
@@ -1004,7 +1004,7 @@ export async function bulkApproveQuestions(req: Request, res: Response) {
     res.json({
       success: true,
       message: `Questions approved successfully`,
-      data: { updated: result.rowCount || 0 },
+      data: { updated: questionIds?.length || 'all' },
     });
   } catch (error) {
     console.error('Error bulk approving questions:', error);
