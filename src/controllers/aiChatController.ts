@@ -3,7 +3,10 @@ import { db } from '../config/database';
 import { aiChatSessions, aiChatMessages } from '../models/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { openaiService } from '../services/openaiService';
-import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
+
+// Use crypto.randomUUID() instead of uuid package to avoid ESM issues
+const uuidv4 = () => crypto.randomUUID();
 
 const HTTP_STATUS = {
   OK: 200,
