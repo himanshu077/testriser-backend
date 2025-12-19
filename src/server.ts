@@ -16,6 +16,7 @@ import practiceRoutes from './routes/practiceRoutes';
 import contactRoutes from './routes/contactRoutes';
 import booksRoutes from './routes/booksRoutes';
 import subjectsRoutes from './routes/subjectsRoutes';
+import aiChatRoutes from './routes/aiChatRoutes';
 import { BRANDING } from './config/branding';
 
 // Version: 1.0.6 - Database health check and smart migrations
@@ -125,6 +126,7 @@ app.use('/api/exam', examRoutes);
 app.use('/api/practice', practiceRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/subjects', subjectsRoutes); // Public subjects endpoint
+app.use('/api/ai-chat', aiChatRoutes); // AI chat endpoints (public + protected)
 
 // 404 handler
 app.use((req: Request, res: Response) => {

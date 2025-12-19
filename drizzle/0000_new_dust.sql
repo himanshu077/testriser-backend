@@ -1,6 +1,8 @@
+CREATE TYPE "public"."ai_message_role" AS ENUM('user', 'assistant');--> statement-breakpoint
 CREATE TYPE "public"."book_type" AS ENUM('pyq', 'standard');--> statement-breakpoint
 CREATE TYPE "public"."book_upload_status" AS ENUM('pending', 'processing', 'completed', 'failed');--> statement-breakpoint
 CREATE TYPE "public"."chapter_status" AS ENUM('draft', 'active', 'archived', 'under_review');--> statement-breakpoint
+CREATE TYPE "public"."cognitive_level" AS ENUM('fact', 'conceptual', 'numerical', 'assertion');--> statement-breakpoint
 CREATE TYPE "public"."difficulty" AS ENUM('easy', 'medium', 'hard');--> statement-breakpoint
 CREATE TYPE "public"."exam_status" AS ENUM('draft', 'published', 'archived');--> statement-breakpoint
 CREATE TYPE "public"."grade_level" AS ENUM('11', '12');--> statement-breakpoint
@@ -9,6 +11,61 @@ CREATE TYPE "public"."pyq_type" AS ENUM('subject_wise', 'full_length');--> state
 CREATE TYPE "public"."question_type" AS ENUM('single_correct', 'multiple_correct', 'assertion_reason', 'integer_type', 'match_list');--> statement-breakpoint
 CREATE TYPE "public"."student_exam_status" AS ENUM('not_started', 'in_progress', 'submitted', 'evaluated');--> statement-breakpoint
 CREATE TYPE "public"."user_role" AS ENUM('admin', 'student');--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "ai_chat_messages" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"session_id" uuid NOT NULL,
+	"role" "ai_message_role" NOT NULL,
+	"content" text NOT NULL,
+	"token_count" integer,
+	"model" varchar(50),
+	"processing_time_ms" integer,
+	"metadata" text,
+	"created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "ai_chat_sessions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid,
+	"session_id" varchar(100) NOT NULL,
+	"subject_code" varchar(50) NOT NULL,
+	"chapter_slug" varchar(500) NOT NULL,
+	"is_anonymous" boolean DEFAULT true NOT NULL,
+	"device_fingerprint" varchar(255),
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"last_activity_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "ai_chat_sessions_session_id_unique" UNIQUE("session_id")
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "ai_usage_tracking" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid,
+	"session_id" varchar(100),
+	"date" timestamp DEFAULT now() NOT NULL,
+	"question_count" integer DEFAULT 1 NOT NULL,
+	"total_tokens_used" integer DEFAULT 0 NOT NULL,
+	"total_cost_usd" numeric(10, 4) DEFAULT '0' NOT NULL,
+	"model" varchar(50) NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "api_cost_tracking" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"book_id" uuid,
+	"api_provider" varchar(50) NOT NULL,
+	"model_name" varchar(100) NOT NULL,
+	"operation_type" varchar(50) NOT NULL,
+	"input_tokens" integer DEFAULT 0,
+	"output_tokens" integer DEFAULT 0,
+	"total_tokens" integer DEFAULT 0,
+	"estimated_cost_usd" varchar(20),
+	"page_number" integer,
+	"success" boolean DEFAULT true,
+	"error_message" text,
+	"processing_time_ms" integer,
+	"created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "books" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"title" varchar(255) NOT NULL,
@@ -16,11 +73,16 @@ CREATE TABLE IF NOT EXISTS "books" (
 	"filename" varchar(500) NOT NULL,
 	"file_path" text NOT NULL,
 	"file_size" integer NOT NULL,
+	"file_hash" varchar(64),
+	"exam_name" varchar(255),
+	"exam_year" integer,
 	"subject" varchar(50),
 	"book_type" "book_type" DEFAULT 'standard' NOT NULL,
 	"pyq_type" "pyq_type",
 	"upload_status" "book_upload_status" DEFAULT 'pending' NOT NULL,
 	"total_questions_extracted" integer DEFAULT 0,
+	"extraction_progress" integer DEFAULT 0,
+	"current_step" varchar(100),
 	"uploaded_by" uuid,
 	"processing_started_at" timestamp,
 	"processing_completed_at" timestamp,
@@ -93,6 +155,24 @@ CREATE TABLE IF NOT EXISTS "mock_tests" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "page_extraction_results" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"book_id" uuid NOT NULL,
+	"page_number" integer NOT NULL,
+	"page_image_path" text,
+	"status" varchar(20) NOT NULL,
+	"questions_extracted" integer DEFAULT 0,
+	"expected_question_range" varchar(50),
+	"extracted_questions" text,
+	"missing_questions" text,
+	"error_message" text,
+	"api_cost" varchar(20),
+	"processing_time_ms" integer,
+	"retry_count" integer DEFAULT 0,
+	"last_retry_at" timestamp,
+	"created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "papers" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"title" varchar(255) NOT NULL,
@@ -133,6 +213,7 @@ CREATE TABLE IF NOT EXISTS "questions" (
 	"question_text" text NOT NULL,
 	"question_image" text,
 	"question_type" "question_type" DEFAULT 'single_correct' NOT NULL,
+	"cognitive_level" "cognitive_level",
 	"option_a" text,
 	"option_b" text,
 	"option_c" text,
@@ -141,7 +222,7 @@ CREATE TABLE IF NOT EXISTS "questions" (
 	"option_b_image" text,
 	"option_c_image" text,
 	"option_d_image" text,
-	"correct_answer" text NOT NULL,
+	"correct_answer" text,
 	"explanation" text,
 	"explanation_image" text,
 	"marks_positive" numeric(4, 2) DEFAULT '4.00' NOT NULL,
@@ -154,6 +235,19 @@ CREATE TABLE IF NOT EXISTS "questions" (
 	"structured_data" text,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "section_extraction_results" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"book_id" uuid NOT NULL,
+	"subject" varchar(50) NOT NULL,
+	"start_page" integer NOT NULL,
+	"end_page" integer NOT NULL,
+	"expected_questions" integer NOT NULL,
+	"extracted_questions" integer NOT NULL,
+	"missing_question_numbers" text,
+	"status" varchar(20) NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "student_answers" (
@@ -224,6 +318,30 @@ CREATE TABLE IF NOT EXISTS "users" (
 );
 --> statement-breakpoint
 DO $$ BEGIN
+ ALTER TABLE "ai_chat_messages" ADD CONSTRAINT "ai_chat_messages_session_id_ai_chat_sessions_id_fk" FOREIGN KEY ("session_id") REFERENCES "public"."ai_chat_sessions"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "ai_chat_sessions" ADD CONSTRAINT "ai_chat_sessions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "ai_usage_tracking" ADD CONSTRAINT "ai_usage_tracking_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "api_cost_tracking" ADD CONSTRAINT "api_cost_tracking_book_id_books_id_fk" FOREIGN KEY ("book_id") REFERENCES "public"."books"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
  ALTER TABLE "books" ADD CONSTRAINT "books_uploaded_by_users_id_fk" FOREIGN KEY ("uploaded_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
@@ -254,6 +372,12 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
+ ALTER TABLE "page_extraction_results" ADD CONSTRAINT "page_extraction_results_book_id_books_id_fk" FOREIGN KEY ("book_id") REFERENCES "public"."books"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
  ALTER TABLE "question_practice" ADD CONSTRAINT "question_practice_student_id_users_id_fk" FOREIGN KEY ("student_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
@@ -279,6 +403,12 @@ END $$;
 --> statement-breakpoint
 DO $$ BEGIN
  ALTER TABLE "questions" ADD CONSTRAINT "questions_curriculum_chapter_id_curriculum_chapters_id_fk" FOREIGN KEY ("curriculum_chapter_id") REFERENCES "public"."curriculum_chapters"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "section_extraction_results" ADD CONSTRAINT "section_extraction_results_book_id_books_id_fk" FOREIGN KEY ("book_id") REFERENCES "public"."books"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;

@@ -5,22 +5,22 @@
  */
 
 export const BRANDING = {
-  APP_NAME: 'Testriser',
-  APP_NAME_FULL: 'Testriser - NEET Exam Portal',
+  APP_NAME: 'MarksRiser',
+  APP_NAME_FULL: 'MarksRiser - NEET Exam Portal',
   APP_DESCRIPTION: 'Complete NEET Exam Preparation Platform with Mock Tests and Practice Questions',
-  COMPANY_NAME: 'Testriser',
+  COMPANY_NAME: 'MarksRiser',
   TAGLINE: 'Rise Above with Smart NEET Preparation',
-  SERVICE_NAME: 'Testriser Backend API',
+  SERVICE_NAME: 'MarksRiser Backend API',
 } as const;
 
 export const EMAILS = {
-  SUPPORT: 'support@testriser.com',
-  ADMIN: 'admin@testriser.com',
-  DEMO_STUDENT: 'student@testriser.com',
+  SUPPORT: 'support@marksriser.com',
+  ADMIN: 'admin@marksriser.com',
+  DEMO_STUDENT: 'student@marksriser.com',
 } as const;
 
 export const LINKS = {
-  WEBSITE: 'https://testriser.com',
-  DOCS: 'https://docs.testriser.com',
+  WEBSITE: 'https://marksriser.com',
+  DOCS: 'https://marksriser.com/docs',
   API_DOCS: '/api-docs',
 } as const;

@@ -5,36 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1765558186749,
-      "tag": "0000_heavy_jocasta",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1765805428860,
-      "tag": "0001_melted_madelyne_pryor",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1765805614595,
-      "tag": "0002_loving_radioactive_man",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1765817906664,
-      "tag": "0003_outstanding_grandmaster",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1765821970995,
-      "tag": "0004_dapper_bloodscream",
+      "when": 1766141790516,
+      "tag": "0000_new_dust",
       "breakpoints": true
     }
   ]

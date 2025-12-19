@@ -20,6 +20,14 @@ export const JWT_CONFIG = {
   EXPIRES_IN: (process.env.JWT_EXPIRES_IN || '7d') as string | number,
 };
 
+// OpenAI Configuration
+export const OPENAI_CONFIG = {
+  MODEL_GPT4: 'gpt-4-turbo',
+  MODEL_GPT35: 'gpt-3.5-turbo',
+  MAX_TOKENS: 1000,
+  TEMPERATURE: 0.7,
+} as const;
+
 // User Roles
 export const USER_ROLES = {
   ADMIN: 'admin',

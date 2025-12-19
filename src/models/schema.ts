@@ -87,6 +87,9 @@ export const chapterStatusEnum = pgEnum('chapter_status', [
   'under_review', // Being updated/reviewed
 ]);
 
+// AI chat message role enum
+export const aiMessageRoleEnum = pgEnum('ai_message_role', ['user', 'assistant']);
+
 // ============================================================================
 // USERS TABLE
 // ============================================================================
@@ -447,6 +450,57 @@ export const contactMessages = pgTable('contact_messages', {
 });
 
 // ============================================================================
+// AI CHAT SESSIONS (For AI bot chat history management)
+// ============================================================================
+
+export const aiChatSessions = pgTable('ai_chat_sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }), // nullable for anonymous users
+  sessionId: varchar('session_id', { length: 100 }).notNull().unique(), // unique identifier for anonymous sessions
+  subjectCode: varchar('subject_code', { length: 50 }).notNull(),
+  chapterSlug: varchar('chapter_slug', { length: 500 }).notNull(),
+  isAnonymous: boolean('is_anonymous').notNull().default(true),
+  deviceFingerprint: varchar('device_fingerprint', { length: 255 }), // optional tracking for anonymous users
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  lastActivityAt: timestamp('last_activity_at').defaultNow().notNull(),
+});
+
+// ============================================================================
+// AI CHAT MESSAGES (Individual messages in chat sessions)
+// ============================================================================
+
+export const aiChatMessages = pgTable('ai_chat_messages', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  sessionId: uuid('session_id')
+    .references(() => aiChatSessions.id, { onDelete: 'cascade' })
+    .notNull(),
+  role: aiMessageRoleEnum('role').notNull(), // 'user' or 'assistant'
+  content: text('content').notNull(),
+  tokenCount: integer('token_count'), // track OpenAI tokens used
+  model: varchar('model', { length: 50 }), // e.g., 'gpt-4', 'gpt-3.5-turbo'
+  processingTimeMs: integer('processing_time_ms'), // AI response time
+  metadata: text('metadata'), // JSON for additional data like chapter context
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// ============================================================================
+// AI USAGE TRACKING (For cost and usage monitoring)
+// ============================================================================
+
+export const aiUsageTracking = pgTable('ai_usage_tracking', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }), // nullable for anonymous
+  sessionId: varchar('session_id', { length: 100 }), // for anonymous tracking
+  date: timestamp('date').notNull().defaultNow(),
+  questionCount: integer('question_count').notNull().default(1),
+  totalTokensUsed: integer('total_tokens_used').notNull().default(0),
+  totalCostUsd: decimal('total_cost_usd', { precision: 10, scale: 4 }).notNull().default('0'),
+  model: varchar('model', { length: 50 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// ============================================================================
 // RELATIONS
 // ============================================================================
 
@@ -557,6 +611,28 @@ export const questionPracticeRelations = relations(questionPractice, ({ one }) =
   }),
 }));
 
+export const aiChatSessionsRelations = relations(aiChatSessions, ({ one, many }) => ({
+  user: one(users, {
+    fields: [aiChatSessions.userId],
+    references: [users.id],
+  }),
+  messages: many(aiChatMessages),
+}));
+
+export const aiChatMessagesRelations = relations(aiChatMessages, ({ one }) => ({
+  session: one(aiChatSessions, {
+    fields: [aiChatMessages.sessionId],
+    references: [aiChatSessions.id],
+  }),
+}));
+
+export const aiUsageTrackingRelations = relations(aiUsageTracking, ({ one }) => ({
+  user: one(users, {
+    fields: [aiUsageTracking.userId],
+    references: [users.id],
+  }),
+}));
+
 // ============================================================================
 // TYPE EXPORTS
 // ============================================================================
@@ -596,3 +672,12 @@ export type NewContactMessage = typeof contactMessages.$inferInsert;
 
 export type CurriculumChapter = typeof curriculumChapters.$inferSelect;
 export type NewCurriculumChapter = typeof curriculumChapters.$inferInsert;
+
+export type AIChatSession = typeof aiChatSessions.$inferSelect;
+export type NewAIChatSession = typeof aiChatSessions.$inferInsert;
+
+export type AIChatMessage = typeof aiChatMessages.$inferSelect;
+export type NewAIChatMessage = typeof aiChatMessages.$inferInsert;
+
+export type AIUsageTracking = typeof aiUsageTracking.$inferSelect;
+export type NewAIUsageTracking = typeof aiUsageTracking.$inferInsert;

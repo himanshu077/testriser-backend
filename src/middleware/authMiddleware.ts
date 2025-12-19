@@ -36,7 +36,20 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
       });
     }
 
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    const token = authHeader.substring(7).trim(); // Remove 'Bearer ' prefix and trim whitespace
+
+    // Validate token format (JWT should have 3 parts separated by dots)
+    if (!token || token.split('.').length !== 3) {
+      console.error('Invalid token format:', {
+        tokenLength: token?.length,
+        tokenParts: token?.split('.').length,
+        tokenPreview: token?.substring(0, 20) + '...',
+      });
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Invalid token format',
+      });
+    }
 
     // Verify JWT token
     const decoded = jwt.verify(token, JWT_SECRET) as {
@@ -121,12 +134,25 @@ export const requireStudent = requireRole(['student']);
 export async function authenticateSSE(req: Request, res: Response, next: NextFunction) {
   try {
     // Get token from query parameter
-    const token = req.query.token as string;
+    const token = (req.query.token as string)?.trim();
 
     if (!token) {
       return res.status(401).json({
         error: 'Unauthorized',
         message: 'No token provided in query parameter',
+      });
+    }
+
+    // Validate token format (JWT should have 3 parts separated by dots)
+    if (token.split('.').length !== 3) {
+      console.error('Invalid SSE token format:', {
+        tokenLength: token.length,
+        tokenParts: token.split('.').length,
+        tokenPreview: token.substring(0, 20) + '...',
+      });
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Invalid token format',
       });
     }
 
