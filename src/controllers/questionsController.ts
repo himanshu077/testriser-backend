@@ -1041,3 +1041,142 @@ export async function getPendingCount(req: Request, res: Response) {
     });
   }
 }
+
+/**
+ * Generate AI explanation for a question
+ * POST /api/admin/questions/:id/generate-explanation
+ *
+ * Body:
+ * - customPrompt: string (optional user's custom instructions for explanation generation)
+ */
+export async function generateExplanation(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const { customPrompt } = req.body;
+
+    // Get the question from database
+    const [question] = await db.select().from(questions).where(eq(questions.id, id)).limit(1);
+
+    if (!question) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        error: 'Question not found',
+      });
+    }
+
+    // Initialize OpenAI
+    const OpenAI = (await import('openai')).default;
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY || '',
+    });
+
+    // Build the prompt
+    const systemPrompt = `You are an expert tutor for NEET/JEE exam preparation. Generate detailed, accurate explanations for exam questions.
+
+For mathematical formulas, use LaTeX notation:
+- Inline math: $E = mc^2$
+- Display math: $$E = mc^2$$
+
+Keep explanations clear, concise, and student-friendly.`;
+
+    const userPrompt = `Generate a comprehensive explanation for this question:
+
+**Question:** ${question.questionText}
+
+**Options:**
+${question.optionA ? `A) ${question.optionA}` : ''}
+${question.optionB ? `B) ${question.optionB}` : ''}
+${question.optionC ? `C) ${question.optionC}` : ''}
+${question.optionD ? `D) ${question.optionD}` : ''}
+
+**Correct Answer:** ${question.correctAnswer}
+
+**Subject:** ${question.subject}
+**Topic:** ${question.topic}
+${question.subtopic ? `**Subtopic:** ${question.subtopic}` : ''}
+
+${customPrompt ? `\n**Additional Instructions:** ${customPrompt}\n` : ''}
+
+Provide an explanation that:
+1. Explains why the correct answer is right
+2. Clarifies why other options are incorrect (if applicable)
+3. Includes relevant formulas, concepts, or step-by-step calculations
+4. Uses proper LaTeX notation for mathematical expressions`;
+
+    // Generate explanation using OpenAI
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 0.7,
+      max_tokens: 1000,
+    });
+
+    const explanation = completion.choices[0]?.message?.content || '';
+
+    // Try to detect if AI suggests a different answer
+    let suggestedAnswer = null;
+    let aiCalculatedValue = null;
+
+    // Ask AI to determine the correct answer based on calculation
+    const answerCheckPrompt = `Based on your explanation and calculation, which option (A, B, C, or D) is correct?
+If you calculated a specific numerical value, also provide that value.
+Respond in this exact format:
+Correct Option: [A/B/C/D]
+Calculated Value: [number or "N/A"]`;
+
+    const answerCheck = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+        { role: 'assistant', content: explanation },
+        { role: 'user', content: answerCheckPrompt },
+      ],
+      temperature: 0.3,
+      max_tokens: 100,
+    });
+
+    const answerCheckResponse = answerCheck.choices[0]?.message?.content || '';
+
+    // Parse the AI's suggested answer
+    const optionMatch = answerCheckResponse.match(/Correct Option:\s*([A-D])/i);
+    const valueMatch = answerCheckResponse.match(/Calculated Value:\s*([^\n]+)/i);
+
+    if (optionMatch) {
+      suggestedAnswer = optionMatch[1].toUpperCase();
+    }
+
+    if (valueMatch && valueMatch[1] !== 'N/A') {
+      aiCalculatedValue = valueMatch[1].trim();
+    }
+
+    // Update the question with the new explanation
+    await db
+      .update(questions)
+      .set({
+        explanation,
+        updatedAt: new Date(),
+      })
+      .where(eq(questions.id, id));
+
+    res.json({
+      success: true,
+      data: {
+        explanation,
+        suggestedAnswer,
+        aiCalculatedValue,
+        currentAnswer: question.correctAnswer,
+        hasConflict: suggestedAnswer && suggestedAnswer !== question.correctAnswer,
+      },
+      message: 'Explanation generated successfully',
+    });
+  } catch (error) {
+    console.error('Error generating explanation:', error);
+    res.status(HTTP_STATUS.SERVER_ERROR).json({
+      error: 'Failed to generate explanation',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
