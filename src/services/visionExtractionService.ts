@@ -729,7 +729,19 @@ For each question, provide a JSON object with:
   * "numerical" - Tests problem-solving with calculations (e.g., "Calculate...", "Find the value...")
   * "assertion" - Tests logical reasoning, typically assertion-reason format
   ⚠️ IMPORTANT: "numerical" and "conceptual" go in cognitiveLevel, NOT in difficulty or questionType!
-- explanation: Extract the detailed explanation/solution if present in the PDF (leave empty string "" if not available)
+- correctAnswer: MUST provide the correct answer by analyzing the question
+  * For single/multiple choice: Specify the correct option(s) as "A", "B", "C", "D", or combinations like "A,B"
+  * For integer type: Provide the numerical answer
+  * Use your subject knowledge (Physics, Chemistry, Biology) to determine the correct answer
+  * NEVER leave this empty - always solve the question and provide the answer
+- explanation: MUST provide a detailed explanation/solution
+  * First check if explanation is visible in the PDF and extract it
+  * If NOT visible in PDF, USE YOUR KNOWLEDGE to generate a complete solution explaining:
+    - Why the correct answer is correct
+    - Step-by-step reasoning or calculations
+    - Key concepts/formulas used
+  * Make explanation clear, concise, and educationally valuable (2-4 sentences)
+  * NEVER leave this empty - always provide an explanation
 - hasDiagram: true if there's a diagram/image
 - diagramDescription: Brief description of any diagram
 
@@ -759,6 +771,20 @@ FIELD VALIDATION SUMMARY:
 }
 - Extract the table data carefully preserving all mathematical notation, subscripts, superscripts
 - optionA, optionB, optionC, optionD should contain the matching combinations (e.g., "A-IV, B-III, C-I, D-II")
+
+🎯 CRITICAL REQUIREMENT - AI QUESTION SOLVING:
+You are NOT just extracting text - you are also SOLVING each question as a subject matter expert!
+
+For EVERY question you extract:
+1. ✅ READ the question and all options carefully
+2. ✅ ANALYZE using your knowledge of Physics/Chemistry/Biology
+3. ✅ DETERMINE which option is correct (or calculate the answer for numerical questions)
+4. ✅ PROVIDE the correctAnswer field with the right option (A/B/C/D or numerical value)
+5. ✅ GENERATE a clear explanation showing your reasoning/solution (2-4 sentences)
+
+📌 If answer key is visible in the PDF: Extract it
+📌 If answer key is NOT visible: Use your subject expertise to solve it
+📌 NEVER leave correctAnswer or explanation empty - always provide both!
 
 Return ONLY a JSON array of questions, nothing else.`;
 
