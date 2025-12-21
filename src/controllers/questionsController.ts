@@ -1019,6 +1019,170 @@ export async function bulkApproveQuestions(req: Request, res: Response) {
 }
 
 /**
+ * Auto-generate missing diagrams for questions
+ * POST /api/admin/questions/auto-generate-diagrams
+ *
+ * Finds all questions with hasDiagram=true but no questionImage,
+ * and automatically generates diagrams using AI
+ */
+export async function autoGenerateMissingDiagrams(req: Request, res: Response) {
+  try {
+    const { limit = 10, bookId } = req.body;
+
+    console.log(`\n🔍 Auto-generating missing diagrams...`);
+    console.log(`   Limit: ${limit} questions`);
+    if (bookId) console.log(`   Book ID filter: ${bookId}`);
+
+    // Find questions with diagram but no image
+    const conditions = [eq(questions.hasDiagram, true), isNull(questions.questionImage)];
+
+    if (bookId) {
+      conditions.push(eq(questions.bookId, bookId));
+    }
+
+    const questionsToProcess = await db
+      .select()
+      .from(questions)
+      .where(and(...conditions))
+      .limit(parseInt(limit as string));
+
+    console.log(`   Found ${questionsToProcess.length} questions with missing diagrams`);
+
+    if (questionsToProcess.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No questions with missing diagrams found',
+        data: { processed: 0, results: [] },
+      });
+    }
+
+    // Initialize vision extraction service
+    const visionService = new VisionExtractionService();
+    const results = [];
+
+    for (const question of questionsToProcess) {
+      try {
+        console.log(`\n📸 Processing Q${question.questionNumber} (${question.id.slice(0, 8)}...)`);
+
+        // Get book info
+        if (!question.bookId) {
+          console.log(`   ⏭️  Skipping - no book ID`);
+          results.push({
+            questionId: question.id,
+            questionNumber: question.questionNumber,
+            status: 'skipped',
+            reason: 'No book ID',
+          });
+          continue;
+        }
+
+        const [book] = await db.select().from(books).where(eq(books.id, question.bookId)).limit(1);
+
+        if (!book) {
+          console.log(`   ⏭️  Skipping - book not found`);
+          results.push({
+            questionId: question.id,
+            questionNumber: question.questionNumber,
+            status: 'skipped',
+            reason: 'Book not found',
+          });
+          continue;
+        }
+
+        // Get PDF path
+        let pdfPath: string;
+        if (path.isAbsolute(book.filePath)) {
+          pdfPath = book.filePath;
+        } else {
+          pdfPath = path.join(process.cwd(), 'backend', book.filePath);
+        }
+
+        if (!fs.existsSync(pdfPath)) {
+          console.log(`   ⏭️  Skipping - PDF not found`);
+          results.push({
+            questionId: question.id,
+            questionNumber: question.questionNumber,
+            status: 'skipped',
+            reason: 'PDF file not found',
+          });
+          continue;
+        }
+
+        // Use diagram description or generate from question text
+        const diagramDescription =
+          question.diagramDescription ||
+          `Diagram for question ${question.questionNumber}: ${question.questionText?.substring(0, 100)}`;
+
+        console.log(`   📋 Description: ${diagramDescription.substring(0, 80)}...`);
+
+        // Generate diagram
+        const diagramPath = await visionService.generateDiagramForQuestion(
+          pdfPath,
+          question.questionNumber,
+          diagramDescription
+        );
+
+        // Update question
+        await db
+          .update(questions)
+          .set({
+            questionImage: diagramPath,
+            updatedAt: new Date(),
+          })
+          .where(eq(questions.id, question.id));
+
+        console.log(`   ✅ Generated: ${diagramPath}`);
+
+        results.push({
+          questionId: question.id,
+          questionNumber: question.questionNumber,
+          status: 'success',
+          diagramPath,
+        });
+      } catch (error) {
+        console.error(
+          `   ❌ Error processing Q${question.questionNumber}:`,
+          error instanceof Error ? error.message : error
+        );
+        results.push({
+          questionId: question.id,
+          questionNumber: question.questionNumber,
+          status: 'error',
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    }
+
+    const successCount = results.filter((r) => r.status === 'success').length;
+    const errorCount = results.filter((r) => r.status === 'error').length;
+    const skippedCount = results.filter((r) => r.status === 'skipped').length;
+
+    console.log(`\n✅ Auto-generation complete:`);
+    console.log(`   Success: ${successCount}`);
+    console.log(`   Errors: ${errorCount}`);
+    console.log(`   Skipped: ${skippedCount}`);
+
+    res.json({
+      success: true,
+      message: 'Auto-generation completed',
+      data: {
+        processed: results.length,
+        success: successCount,
+        errors: errorCount,
+        skipped: skippedCount,
+        results,
+      },
+    });
+  } catch (error) {
+    console.error('Error in auto-generate diagrams:', error);
+    res.status(HTTP_STATUS.SERVER_ERROR).json({
+      error: 'Failed to auto-generate diagrams',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+/**
  * Get pending questions count (for review badge)
  * GET /api/admin/questions/pending/count
  */
