@@ -1126,6 +1126,136 @@ Please describe:
   }
 
   /**
+   * Generate a clean, high-quality diagram by analyzing the original and creating a better version
+   */
+  private async generateCleanDiagram(
+    question: ExtractedQuestion,
+    pageImagePath: string
+  ): Promise<string | null> {
+    try {
+      // Check if diagram already exists to avoid duplicates
+      const diagramFilename = `q${question.questionNumber}-diagram.png`;
+      const diagramPath = path.join(this.diagramsDir, diagramFilename);
+
+      try {
+        await fs.access(diagramPath);
+        console.log(`      ℹ️  Diagram already exists for Q${question.questionNumber}`);
+        return `/uploads/diagrams/${diagramFilename}`;
+      } catch {
+        // File doesn't exist, proceed with generation
+      }
+
+      await fs.mkdir(this.diagramsDir, { recursive: true });
+
+      // Step 1: Analyze the original diagram from PDF
+      const imageBuffer = await fs.readFile(pageImagePath);
+      const base64Image = imageBuffer.toString('base64');
+
+      console.log(`      📋 Analyzing original diagram for Q${question.questionNumber}...`);
+
+      const analysisPrompt = `Analyze this NEET exam question page and provide a DETAILED technical description of the diagram for Question ${question.questionNumber}.
+
+Question: "${question.questionText?.substring(0, 200)}..."
+Diagram type: "${question.diagramDescription || 'scientific diagram'}"
+
+Provide an EXTREMELY DETAILED description that captures:
+- Type of diagram (circuit, graph, biological, physics, chemistry)
+- All labels, letters, numbers, and symbols (EXACT text matters!)
+- Spatial arrangement and positioning
+- Arrows, directions, axes
+- Units, scales, measurements
+- Colors, lines, shapes
+- Any annotations or markings
+
+Return JSON:
+{
+  "diagramType": "circuit/graph/biological/physics/chemistry/other",
+  "detailedDescription": "Comprehensive technical description here",
+  "keyElements": ["element1", "element2"],
+  "labels": ["P", "Q", etc]
+}`;
+
+      const analysisResponse = await retryWithBackoff(
+        () =>
+          this.openai.chat.completions.create({
+            model: 'gpt-4o',
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  { type: 'text', text: analysisPrompt },
+                  {
+                    type: 'image_url',
+                    image_url: {
+                      url: `data:image/png;base64,${base64Image}`,
+                      detail: 'high',
+                    },
+                  },
+                ],
+              },
+            ],
+            max_tokens: 1000,
+            temperature: 0.1,
+          }),
+        { maxRetries: 2, shouldRetry: isRetryableError }
+      );
+
+      const analysisText = analysisResponse.choices[0]?.message?.content?.trim() || '';
+      const cleaned = analysisText.replace(/```json\s*|\s*```/g, '').trim();
+      const analysis = JSON.parse(cleaned);
+
+      // Step 2: Generate clean diagram using DALL-E 3
+      console.log(`      🎨 Generating clean diagram with DALL-E 3...`);
+
+      const dallePrompt = `Create a clean, professional NEET exam diagram. This is for educational purposes.
+
+${analysis.detailedDescription}
+
+Style requirements:
+- Clean white background
+- Black lines and text (high contrast)
+- Clear, legible labels matching exactly: ${analysis.labels?.join(', ') || 'as shown'}
+- Professional technical drawing quality
+- Educational textbook style
+- NO decorative elements
+- NO artistic interpretation
+- EXACT replica of the described diagram
+- All text must be readable and correct`;
+
+      const imageResponse = await retryWithBackoff(
+        () =>
+          this.openai.images.generate({
+            model: 'dall-e-3',
+            prompt: dallePrompt,
+            n: 1,
+            size: '1024x1024',
+            quality: 'hd', // High definition for better quality
+            style: 'natural',
+          }),
+        { maxRetries: 2, shouldRetry: isRetryableError }
+      );
+
+      const imageUrl = imageResponse.data?.[0]?.url;
+      if (!imageUrl) {
+        throw new Error('No image URL from DALL-E');
+      }
+
+      // Download and save the generated diagram
+      const downloadResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+      const imageData = Buffer.from(downloadResponse.data);
+
+      await fs.writeFile(diagramPath, imageData);
+
+      console.log(`      ✅ High-quality diagram generated and saved`);
+
+      return `/uploads/diagrams/${diagramFilename}`;
+    } catch (error: any) {
+      console.error(`      ❌ Failed to generate diagram: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
    * Cleanup temporary files and directories
    */
   private async cleanup(files: string[], bookId?: string): Promise<void> {
@@ -1568,6 +1698,28 @@ Please confirm that you can see Question ${questionNumber} and its associated di
 
           console.log(`✅ Extracted ${questions.length} questions from page ${page.pageNumber}`);
 
+          // Extract diagrams for questions that need them
+          const questionsWithDiagrams = questions.filter((q) => q.hasDiagram && !q.diagramImage);
+          if (questionsWithDiagrams.length > 0) {
+            console.log(`   🎨 Processing ${questionsWithDiagrams.length} diagram(s)...`);
+
+            for (const question of questionsWithDiagrams) {
+              try {
+                // Generate clean diagram using OpenAI
+                const diagramUrl = await service.generateCleanDiagram(question, absoluteFilePath);
+
+                if (diagramUrl) {
+                  question.diagramImage = diagramUrl;
+                  console.log(`      ✅ Q${question.questionNumber}: Clean diagram generated`);
+                } else {
+                  console.log(`      ⚠️  Q${question.questionNumber}: Diagram generation failed`);
+                }
+              } catch (error: any) {
+                console.error(`      ❌ Q${question.questionNumber}: ${error.message}`);
+              }
+            }
+          }
+
           // Save questions to database as draft (pending review)
           for (const question of questions) {
             // Validate difficulty field - ensure it's one of the valid enum values
@@ -1591,6 +1743,7 @@ Please confirm that you can see Question ${questionNumber} and its associated di
             await db.insert(questionsTable).values({
               bookId,
               ...question,
+              questionImage: question.diagramImage || null, // Map diagramImage to questionImage field
               difficulty: validDifficulty,
               questionType: validQuestionType,
               isActive: false, // Draft - requires admin review before going live
