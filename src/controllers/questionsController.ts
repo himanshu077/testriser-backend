@@ -1019,6 +1019,170 @@ export async function bulkApproveQuestions(req: Request, res: Response) {
 }
 
 /**
+ * Auto-generate missing diagrams for questions
+ * POST /api/admin/questions/auto-generate-diagrams
+ *
+ * Finds all questions with hasDiagram=true but no questionImage,
+ * and automatically generates diagrams using AI
+ */
+export async function autoGenerateMissingDiagrams(req: Request, res: Response) {
+  try {
+    const { limit = 10, bookId } = req.body;
+
+    console.log(`\n🔍 Auto-generating missing diagrams...`);
+    console.log(`   Limit: ${limit} questions`);
+    if (bookId) console.log(`   Book ID filter: ${bookId}`);
+
+    // Find questions with diagram but no image
+    const conditions = [eq(questions.hasDiagram, true), isNull(questions.questionImage)];
+
+    if (bookId) {
+      conditions.push(eq(questions.bookId, bookId));
+    }
+
+    const questionsToProcess = await db
+      .select()
+      .from(questions)
+      .where(and(...conditions))
+      .limit(parseInt(limit as string));
+
+    console.log(`   Found ${questionsToProcess.length} questions with missing diagrams`);
+
+    if (questionsToProcess.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No questions with missing diagrams found',
+        data: { processed: 0, results: [] },
+      });
+    }
+
+    // Initialize vision extraction service
+    const visionService = new VisionExtractionService();
+    const results = [];
+
+    for (const question of questionsToProcess) {
+      try {
+        console.log(`\n📸 Processing Q${question.questionNumber} (${question.id.slice(0, 8)}...)`);
+
+        // Get book info
+        if (!question.bookId) {
+          console.log(`   ⏭️  Skipping - no book ID`);
+          results.push({
+            questionId: question.id,
+            questionNumber: question.questionNumber,
+            status: 'skipped',
+            reason: 'No book ID',
+          });
+          continue;
+        }
+
+        const [book] = await db.select().from(books).where(eq(books.id, question.bookId)).limit(1);
+
+        if (!book) {
+          console.log(`   ⏭️  Skipping - book not found`);
+          results.push({
+            questionId: question.id,
+            questionNumber: question.questionNumber,
+            status: 'skipped',
+            reason: 'Book not found',
+          });
+          continue;
+        }
+
+        // Get PDF path
+        let pdfPath: string;
+        if (path.isAbsolute(book.filePath)) {
+          pdfPath = book.filePath;
+        } else {
+          pdfPath = path.join(process.cwd(), 'backend', book.filePath);
+        }
+
+        if (!fs.existsSync(pdfPath)) {
+          console.log(`   ⏭️  Skipping - PDF not found`);
+          results.push({
+            questionId: question.id,
+            questionNumber: question.questionNumber,
+            status: 'skipped',
+            reason: 'PDF file not found',
+          });
+          continue;
+        }
+
+        // Use diagram description or generate from question text
+        const diagramDescription =
+          question.diagramDescription ||
+          `Diagram for question ${question.questionNumber}: ${question.questionText?.substring(0, 100)}`;
+
+        console.log(`   📋 Description: ${diagramDescription.substring(0, 80)}...`);
+
+        // Generate diagram
+        const diagramPath = await visionService.generateDiagramForQuestion(
+          pdfPath,
+          question.questionNumber,
+          diagramDescription
+        );
+
+        // Update question
+        await db
+          .update(questions)
+          .set({
+            questionImage: diagramPath,
+            updatedAt: new Date(),
+          })
+          .where(eq(questions.id, question.id));
+
+        console.log(`   ✅ Generated: ${diagramPath}`);
+
+        results.push({
+          questionId: question.id,
+          questionNumber: question.questionNumber,
+          status: 'success',
+          diagramPath,
+        });
+      } catch (error) {
+        console.error(
+          `   ❌ Error processing Q${question.questionNumber}:`,
+          error instanceof Error ? error.message : error
+        );
+        results.push({
+          questionId: question.id,
+          questionNumber: question.questionNumber,
+          status: 'error',
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    }
+
+    const successCount = results.filter((r) => r.status === 'success').length;
+    const errorCount = results.filter((r) => r.status === 'error').length;
+    const skippedCount = results.filter((r) => r.status === 'skipped').length;
+
+    console.log(`\n✅ Auto-generation complete:`);
+    console.log(`   Success: ${successCount}`);
+    console.log(`   Errors: ${errorCount}`);
+    console.log(`   Skipped: ${skippedCount}`);
+
+    res.json({
+      success: true,
+      message: 'Auto-generation completed',
+      data: {
+        processed: results.length,
+        success: successCount,
+        errors: errorCount,
+        skipped: skippedCount,
+        results,
+      },
+    });
+  } catch (error) {
+    console.error('Error in auto-generate diagrams:', error);
+    res.status(HTTP_STATUS.SERVER_ERROR).json({
+      error: 'Failed to auto-generate diagrams',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+/**
  * Get pending questions count (for review badge)
  * GET /api/admin/questions/pending/count
  */
@@ -1037,6 +1201,145 @@ export async function getPendingCount(req: Request, res: Response) {
     console.error('Error getting pending count:', error);
     res.status(HTTP_STATUS.SERVER_ERROR).json({
       error: 'Failed to get pending count',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+/**
+ * Generate AI explanation for a question
+ * POST /api/admin/questions/:id/generate-explanation
+ *
+ * Body:
+ * - customPrompt: string (optional user's custom instructions for explanation generation)
+ */
+export async function generateExplanation(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const { customPrompt } = req.body;
+
+    // Get the question from database
+    const [question] = await db.select().from(questions).where(eq(questions.id, id)).limit(1);
+
+    if (!question) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        error: 'Question not found',
+      });
+    }
+
+    // Initialize OpenAI
+    const OpenAI = (await import('openai')).default;
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY || '',
+    });
+
+    // Build the prompt
+    const systemPrompt = `You are an expert tutor for NEET/JEE exam preparation. Generate detailed, accurate explanations for exam questions.
+
+For mathematical formulas, use LaTeX notation:
+- Inline math: $E = mc^2$
+- Display math: $$E = mc^2$$
+
+Keep explanations clear, concise, and student-friendly.`;
+
+    const userPrompt = `Generate a comprehensive explanation for this question:
+
+**Question:** ${question.questionText}
+
+**Options:**
+${question.optionA ? `A) ${question.optionA}` : ''}
+${question.optionB ? `B) ${question.optionB}` : ''}
+${question.optionC ? `C) ${question.optionC}` : ''}
+${question.optionD ? `D) ${question.optionD}` : ''}
+
+**Correct Answer:** ${question.correctAnswer}
+
+**Subject:** ${question.subject}
+**Topic:** ${question.topic}
+${question.subtopic ? `**Subtopic:** ${question.subtopic}` : ''}
+
+${customPrompt ? `\n**Additional Instructions:** ${customPrompt}\n` : ''}
+
+Provide an explanation that:
+1. Explains why the correct answer is right
+2. Clarifies why other options are incorrect (if applicable)
+3. Includes relevant formulas, concepts, or step-by-step calculations
+4. Uses proper LaTeX notation for mathematical expressions`;
+
+    // Generate explanation using OpenAI
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 0.7,
+      max_tokens: 1000,
+    });
+
+    const explanation = completion.choices[0]?.message?.content || '';
+
+    // Try to detect if AI suggests a different answer
+    let suggestedAnswer = null;
+    let aiCalculatedValue = null;
+
+    // Ask AI to determine the correct answer based on calculation
+    const answerCheckPrompt = `Based on your explanation and calculation, which option (A, B, C, or D) is correct?
+If you calculated a specific numerical value, also provide that value.
+Respond in this exact format:
+Correct Option: [A/B/C/D]
+Calculated Value: [number or "N/A"]`;
+
+    const answerCheck = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+        { role: 'assistant', content: explanation },
+        { role: 'user', content: answerCheckPrompt },
+      ],
+      temperature: 0.3,
+      max_tokens: 100,
+    });
+
+    const answerCheckResponse = answerCheck.choices[0]?.message?.content || '';
+
+    // Parse the AI's suggested answer
+    const optionMatch = answerCheckResponse.match(/Correct Option:\s*([A-D])/i);
+    const valueMatch = answerCheckResponse.match(/Calculated Value:\s*([^\n]+)/i);
+
+    if (optionMatch) {
+      suggestedAnswer = optionMatch[1].toUpperCase();
+    }
+
+    if (valueMatch && valueMatch[1] !== 'N/A') {
+      aiCalculatedValue = valueMatch[1].trim();
+    }
+
+    // Update the question with the new explanation
+    await db
+      .update(questions)
+      .set({
+        explanation,
+        updatedAt: new Date(),
+      })
+      .where(eq(questions.id, id));
+
+    res.json({
+      success: true,
+      data: {
+        explanation,
+        suggestedAnswer,
+        aiCalculatedValue,
+        currentAnswer: question.correctAnswer,
+        hasConflict: suggestedAnswer && suggestedAnswer !== question.correctAnswer,
+      },
+      message: 'Explanation generated successfully',
+    });
+  } catch (error) {
+    console.error('Error generating explanation:', error);
+    res.status(HTTP_STATUS.SERVER_ERROR).json({
+      error: 'Failed to generate explanation',
       message: error instanceof Error ? error.message : 'Unknown error',
     });
   }

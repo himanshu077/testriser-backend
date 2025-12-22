@@ -716,19 +716,39 @@ CRITICAL EXTRACTION INSTRUCTIONS:
 For each question, provide a JSON object with:
 - questionNumber: The number shown in the PDF
 - questionText: Complete question text (for match-list, include "Match the List-I with List-II")
-- questionType: "single_correct", "multiple_correct", "assertion_reason", "integer_type", or "match_list"
+- questionType: MUST be ONLY one of: "single_correct", "multiple_correct", "assertion_reason", "integer_type", or "match_list"
 - optionA, optionB, optionC, optionD: The four matching options (e.g., "A-IV, B-III, C-I, D-II")
 - subject: "Physics", "Chemistry", "Botany", or "Zoology"
 - topic: Main topic name
-- difficulty: "easy", "medium", or "hard"
-- cognitiveLevel: Classify what cognitive skill this question tests:
+- difficulty: MUST be ONLY one of: "easy", "medium", or "hard"
+  ⚠️ WARNING: NEVER use "numerical", "conceptual", "fact", or "assertion" for difficulty!
+  ⚠️ These values ONLY go in cognitiveLevel field!
+- cognitiveLevel: Classify what cognitive skill this question tests (this is DIFFERENT from difficulty):
   * "fact" - Tests factual recall/memory (e.g., "What is...", "Define...")
   * "conceptual" - Tests understanding of concepts (e.g., "Explain why...", "What happens when...")
   * "numerical" - Tests problem-solving with calculations (e.g., "Calculate...", "Find the value...")
   * "assertion" - Tests logical reasoning, typically assertion-reason format
-- explanation: Extract the detailed explanation/solution if present in the PDF (leave empty string "" if not available)
+  ⚠️ IMPORTANT: "numerical" and "conceptual" go in cognitiveLevel, NOT in difficulty or questionType!
+- correctAnswer: MUST provide the correct answer by analyzing the question
+  * For single/multiple choice: Specify the correct option(s) as "A", "B", "C", "D", or combinations like "A,B"
+  * For integer type: Provide the numerical answer
+  * Use your subject knowledge (Physics, Chemistry, Biology) to determine the correct answer
+  * NEVER leave this empty - always solve the question and provide the answer
+- explanation: MUST provide a detailed explanation/solution
+  * First check if explanation is visible in the PDF and extract it
+  * If NOT visible in PDF, USE YOUR KNOWLEDGE to generate a complete solution explaining:
+    - Why the correct answer is correct
+    - Step-by-step reasoning or calculations
+    - Key concepts/formulas used
+  * Make explanation clear, concise, and educationally valuable (2-4 sentences)
+  * NEVER leave this empty - always provide an explanation
 - hasDiagram: true if there's a diagram/image
 - diagramDescription: Brief description of any diagram
+
+FIELD VALIDATION SUMMARY:
+✓ difficulty: ONLY "easy", "medium", "hard"
+✓ questionType: ONLY "single_correct", "multiple_correct", "assertion_reason", "integer_type", "match_list"
+✓ cognitiveLevel: ONLY "fact", "conceptual", "numerical", "assertion"
 
 **SPECIAL: For MATCH-LIST questions:**
 - questionType MUST be "match_list"
@@ -751,6 +771,20 @@ For each question, provide a JSON object with:
 }
 - Extract the table data carefully preserving all mathematical notation, subscripts, superscripts
 - optionA, optionB, optionC, optionD should contain the matching combinations (e.g., "A-IV, B-III, C-I, D-II")
+
+🎯 CRITICAL REQUIREMENT - AI QUESTION SOLVING:
+You are NOT just extracting text - you are also SOLVING each question as a subject matter expert!
+
+For EVERY question you extract:
+1. ✅ READ the question and all options carefully
+2. ✅ ANALYZE using your knowledge of Physics/Chemistry/Biology
+3. ✅ DETERMINE which option is correct (or calculate the answer for numerical questions)
+4. ✅ PROVIDE the correctAnswer field with the right option (A/B/C/D or numerical value)
+5. ✅ GENERATE a clear explanation showing your reasoning/solution (2-4 sentences)
+
+📌 If answer key is visible in the PDF: Extract it
+📌 If answer key is NOT visible: Use your subject expertise to solve it
+📌 NEVER leave correctAnswer or explanation empty - always provide both!
 
 Return ONLY a JSON array of questions, nothing else.`;
 
@@ -1536,9 +1570,29 @@ Please confirm that you can see Question ${questionNumber} and its associated di
 
           // Save questions to database as draft (pending review)
           for (const question of questions) {
+            // Validate difficulty field - ensure it's one of the valid enum values
+            const validDifficultyValues = ['easy', 'medium', 'hard'];
+            const validDifficulty = validDifficultyValues.includes(question.difficulty)
+              ? question.difficulty
+              : 'medium';
+
+            // Validate question_type field - ensure it's one of the valid enum values
+            const validQuestionTypes = [
+              'single_correct',
+              'multiple_correct',
+              'assertion_reason',
+              'integer_type',
+              'match_list',
+            ];
+            const validQuestionType = validQuestionTypes.includes(question.questionType)
+              ? question.questionType
+              : 'single_correct';
+
             await db.insert(questionsTable).values({
               bookId,
               ...question,
+              difficulty: validDifficulty,
+              questionType: validQuestionType,
               isActive: false, // Draft - requires admin review before going live
             });
           }
@@ -1737,6 +1791,24 @@ Please confirm that you can see Question ${questionNumber} and its associated di
           // Validate if question is complete
           const isComplete = this.isQuestionComplete(question);
 
+          // Validate difficulty field - ensure it's one of the valid enum values
+          const validDifficultyValues = ['easy', 'medium', 'hard'];
+          const validDifficulty = validDifficultyValues.includes(question.difficulty)
+            ? question.difficulty
+            : 'medium';
+
+          // Validate question_type field - ensure it's one of the valid enum values
+          const validQuestionTypes = [
+            'single_correct',
+            'multiple_correct',
+            'assertion_reason',
+            'integer_type',
+            'match_list',
+          ];
+          const validQuestionType = validQuestionTypes.includes(question.questionType)
+            ? question.questionType
+            : 'single_correct';
+
           await db.insert(questionsTable).values({
             bookId: bookId,
             subject: question.subject?.toLowerCase() || 'unknown',
@@ -1748,7 +1820,7 @@ Please confirm that you can see Question ${questionNumber} and its associated di
               question.questionText ||
               `Question ${question.questionNumber} - Incomplete extraction`,
             questionImage: question.diagramImage || null,
-            questionType: question.questionType || 'single_correct',
+            questionType: validQuestionType,
             cognitiveLevel: question.cognitiveLevel || null,
             optionA: question.optionA || null,
             optionB: question.optionB || null,
@@ -1756,7 +1828,7 @@ Please confirm that you can see Question ${questionNumber} and its associated di
             optionD: question.optionD || null,
             correctAnswer: question.correctAnswer || 'PENDING',
             explanation: question.explanation || null,
-            difficulty: question.difficulty || 'medium',
+            difficulty: validDifficulty,
             questionNumber: question.questionNumber,
             isActive: false, // Draft - all questions require admin review before going live
             hasDiagram: question.hasDiagram || false,

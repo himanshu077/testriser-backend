@@ -47,6 +47,8 @@ router.post(
 router.delete('/questions/:id/diagram', questionsController.deleteQuestionDiagram);
 router.post('/questions/:id/generate-diagram', questionsController.generateQuestionDiagram);
 router.post('/questions/:id/crop-diagram', questionsController.cropQuestionDiagram);
+router.post('/questions/:id/generate-explanation', questionsController.generateExplanation);
+router.post('/questions/auto-generate-diagrams', questionsController.autoGenerateMissingDiagrams);
 
 // Question review/approval routes
 router.get('/questions/pending/count', questionsController.getPendingCount);

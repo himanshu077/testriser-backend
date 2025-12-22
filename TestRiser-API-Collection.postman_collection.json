@@ -1,0 +1,1608 @@
+{
+  "info": {
+    "name": "TestRiser API Collection",
+    "description": "Complete API collection for TestRiser Backend - NEET Exam Preparation Platform",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "testriser"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{jwt_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5001",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "admin_email",
+      "value": "admin@testriser.com",
+      "type": "string"
+    },
+    {
+      "key": "admin_password",
+      "value": "admin123",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 Authentication",
+      "item": [
+        {
+          "name": "Sign Up (Register)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set(\"jwt_token\", jsonData.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student@example.com\",\n  \"password\": \"password123\",\n  \"name\": \"John Doe\",\n  \"phone\": \"+91 9876543210\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/sign-up",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "sign-up"]
+            }
+          }
+        },
+        {
+          "name": "Sign In (Login)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set(\"jwt_token\", jsonData.token);",
+                  "    console.log(\"Token saved:\", jsonData.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/sign-in",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "sign-in"]
+            }
+          }
+        },
+        {
+          "name": "Get Session",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/session",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "session"]
+            }
+          }
+        },
+        {
+          "name": "Sign Out",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/sign-out",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "sign-out"]
+            }
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student@testriser.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/forgot-password",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "forgot-password"]
+            }
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"reset-token-from-email\",\n  \"newPassword\": \"newpassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/reset-password",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "reset-password"]
+            }
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"oldpassword123\",\n  \"newPassword\": \"newpassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/change-password",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "change-password"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📚 Admin - Books",
+      "item": [
+        {
+          "name": "Get All Books",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/books?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "books"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "status",
+                  "value": "pending",
+                  "disabled": true
+                },
+                {
+                  "key": "subject",
+                  "value": "physics",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Book By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/books/:bookId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "books", ":bookId"],
+              "variable": [
+                {
+                  "key": "bookId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Upload Book (PDF)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "title",
+                  "value": "NEET Physics 2024",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "NEET Physics Previous Year Questions",
+                  "type": "text"
+                },
+                {
+                  "key": "subject",
+                  "value": "physics",
+                  "type": "text"
+                },
+                {
+                  "key": "bookType",
+                  "value": "pyq",
+                  "type": "text"
+                },
+                {
+                  "key": "pyqType",
+                  "value": "subject_wise",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/books/upload",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "books", "upload"]
+            }
+          }
+        },
+        {
+          "name": "Get Book Questions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/books/:bookId/questions",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "books", ":bookId", "questions"],
+              "variable": [
+                {
+                  "key": "bookId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Book",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Title\",\n  \"description\": \"Updated Description\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/books/:bookId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "books", ":bookId"],
+              "variable": [
+                {
+                  "key": "bookId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Book",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/books/:bookId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "books", ":bookId"],
+              "variable": [
+                {
+                  "key": "bookId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Retry Book Processing",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/books/:bookId/retry",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "books", ":bookId", "retry"],
+              "variable": [
+                {
+                  "key": "bookId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Extraction Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/books/:bookId/extraction-report",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "books", ":bookId", "extraction-report"],
+              "variable": [
+                {
+                  "key": "bookId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Book Pages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/books/:bookId/pages",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "books", ":bookId", "pages"],
+              "variable": [
+                {
+                  "key": "bookId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Retry Pages",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pageNumbers\": [1, 2, 3]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/books/:bookId/retry-pages",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "books", ":bookId", "retry-pages"],
+              "variable": [
+                {
+                  "key": "bookId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Smart Retry",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/books/:bookId/smart-retry",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "books", ":bookId", "smart-retry"],
+              "variable": [
+                {
+                  "key": "bookId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Extract Answer Key",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pageNumber\": 25\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/books/:bookId/extract-answer-key",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "books", ":bookId", "extract-answer-key"],
+              "variable": [
+                {
+                  "key": "bookId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Apply Answer Key",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answerKey\": {\n    \"1\": \"A\",\n    \"2\": \"B\",\n    \"3\": \"C\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/books/:bookId/apply-answer-key",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "books", ":bookId", "apply-answer-key"],
+              "variable": [
+                {
+                  "key": "bookId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📄 Admin - Papers",
+      "item": [
+        {
+          "name": "Get All Papers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/papers",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "papers"]
+            }
+          }
+        },
+        {
+          "name": "Get PYQ Papers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/papers/pyq",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "papers", "pyq"]
+            }
+          }
+        },
+        {
+          "name": "Get Paper By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/papers/:paperId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "papers", ":paperId"],
+              "variable": [
+                {
+                  "key": "paperId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Paper",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"NEET 2024 Mock Test 1\",\n  \"description\": \"Full length mock test\",\n  \"year\": 2024,\n  \"duration\": 180,\n  \"totalMarks\": 720,\n  \"totalQuestions\": 180\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/papers",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "papers"]
+            }
+          }
+        },
+        {
+          "name": "Update Paper",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Title\",\n  \"description\": \"Updated Description\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/papers/:paperId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "papers", ":paperId"],
+              "variable": [
+                {
+                  "key": "paperId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Paper",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/papers/:paperId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "papers", ":paperId"],
+              "variable": [
+                {
+                  "key": "paperId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Paper Questions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/papers/:paperId/questions",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "papers", ":paperId", "questions"],
+              "variable": [
+                {
+                  "key": "paperId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Publish Paper",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/papers/:paperId/publish",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "papers", ":paperId", "publish"],
+              "variable": [
+                {
+                  "key": "paperId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "❓ Admin - Questions",
+      "item": [
+        {
+          "name": "Get All Questions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/questions?subject=physics&page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "questions"],
+              "query": [
+                {
+                  "key": "subject",
+                  "value": "physics"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "topic",
+                  "value": "mechanics",
+                  "disabled": true
+                },
+                {
+                  "key": "difficulty",
+                  "value": "medium",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Filter Options",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/questions/filter-options",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "questions", "filter-options"]
+            }
+          }
+        },
+        {
+          "name": "Get Question By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/questions/:questionId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "questions", ":questionId"],
+              "variable": [
+                {
+                  "key": "questionId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Question",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subject\": \"physics\",\n  \"topic\": \"Mechanics\",\n  \"subtopic\": \"Laws of Motion\",\n  \"questionText\": \"A body of mass 5 kg is moving with a velocity of 10 m/s. Find its momentum.\",\n  \"questionType\": \"single_correct\",\n  \"optionA\": \"50 kg m/s\",\n  \"optionB\": \"5 kg m/s\",\n  \"optionC\": \"10 kg m/s\",\n  \"optionD\": \"0.5 kg m/s\",\n  \"correctAnswer\": \"A\",\n  \"explanation\": \"Momentum = mass × velocity = 5 × 10 = 50 kg m/s\",\n  \"difficulty\": \"easy\",\n  \"questionNumber\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/questions",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "questions"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Create Questions",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questions\": [\n    {\n      \"subject\": \"physics\",\n      \"topic\": \"Mechanics\",\n      \"questionText\": \"Question 1 text\",\n      \"questionType\": \"single_correct\",\n      \"optionA\": \"Option A\",\n      \"optionB\": \"Option B\",\n      \"optionC\": \"Option C\",\n      \"optionD\": \"Option D\",\n      \"correctAnswer\": \"A\",\n      \"difficulty\": \"easy\",\n      \"questionNumber\": 1\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/questions/bulk",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "questions", "bulk"]
+            }
+          }
+        },
+        {
+          "name": "Upload PDF Questions",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "subject",
+                  "value": "physics",
+                  "type": "text"
+                },
+                {
+                  "key": "topic",
+                  "value": "Mechanics",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/questions/upload-pdf",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "questions", "upload-pdf"]
+            }
+          }
+        },
+        {
+          "name": "Update Question",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questionText\": \"Updated question text\",\n  \"correctAnswer\": \"B\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/questions/:questionId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "questions", ":questionId"],
+              "variable": [
+                {
+                  "key": "questionId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Question",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/questions/:questionId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "questions", ":questionId"],
+              "variable": [
+                {
+                  "key": "questionId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Pending Count",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/questions/pending/count",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "questions", "pending", "count"]
+            }
+          }
+        },
+        {
+          "name": "Approve Question",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/questions/:questionId/approve",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "questions", ":questionId", "approve"],
+              "variable": [
+                {
+                  "key": "questionId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Bulk Approve Questions",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questionIds\": [\"id1\", \"id2\", \"id3\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/questions/bulk-approve",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "questions", "bulk-approve"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🎯 Admin - Mock Tests",
+      "item": [
+        {
+          "name": "Get All Mock Tests",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/mock-tests",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "mock-tests"]
+            }
+          }
+        },
+        {
+          "name": "Get Mock Test Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/mock-tests/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "mock-tests", "stats"]
+            }
+          }
+        },
+        {
+          "name": "Generate Mock Test (Auto)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Auto Generated Mock Test\",\n  \"testType\": \"full_test\",\n  \"totalQuestions\": 180,\n  \"duration\": 180,\n  \"distribution\": {\n    \"physics\": 45,\n    \"chemistry\": 45,\n    \"biology\": 90\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/mock-tests/generate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "mock-tests", "generate"]
+            }
+          }
+        },
+        {
+          "name": "Get Mock Test By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/mock-tests/:mockTestId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "mock-tests", ":mockTestId"],
+              "variable": [
+                {
+                  "key": "mockTestId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Mock Test",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"NEET Mock Test 1\",\n  \"description\": \"Full length mock test\",\n  \"testType\": \"full_test\",\n  \"duration\": 180,\n  \"totalMarks\": 720,\n  \"totalQuestions\": 180\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/mock-tests",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "mock-tests"]
+            }
+          }
+        },
+        {
+          "name": "Update Mock Test",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Mock Test Title\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/mock-tests/:mockTestId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "mock-tests", ":mockTestId"],
+              "variable": [
+                {
+                  "key": "mockTestId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Mock Test",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/mock-tests/:mockTestId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "mock-tests", ":mockTestId"],
+              "variable": [
+                {
+                  "key": "mockTestId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Publish Mock Test",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/mock-tests/:mockTestId/publish",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "mock-tests", ":mockTestId", "publish"],
+              "variable": [
+                {
+                  "key": "mockTestId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📖 Admin - Subjects",
+      "item": [
+        {
+          "name": "Get All Subjects (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/subjects",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "subjects"]
+            }
+          }
+        },
+        {
+          "name": "Get Subject By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/subjects/:subjectId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "subjects", ":subjectId"],
+              "variable": [
+                {
+                  "key": "subjectId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Subject",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Physics\",\n  \"code\": \"physics\",\n  \"description\": \"Physics for NEET\",\n  \"icon\": \"⚛️\",\n  \"displayOrder\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/subjects",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "subjects"]
+            }
+          }
+        },
+        {
+          "name": "Update Subject",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Subject Name\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/subjects/:subjectId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "subjects", ":subjectId"],
+              "variable": [
+                {
+                  "key": "subjectId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Subject",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/subjects/:subjectId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "subjects", ":subjectId"],
+              "variable": [
+                {
+                  "key": "subjectId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "👨‍🎓 Admin - Students",
+      "item": [
+        {
+          "name": "Get All Students",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/students",
+              "host": ["{{base_url}}"],
+              "path": ["api", "students"]
+            }
+          }
+        },
+        {
+          "name": "Get Student By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/students/:studentId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "students", ":studentId"],
+              "variable": [
+                {
+                  "key": "studentId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📝 Student - Exams",
+      "item": [
+        {
+          "name": "Start Exam",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paperId\": \"paper-uuid\",\n  \"mockTestId\": null\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/student/exams/start",
+              "host": ["{{base_url}}"],
+              "path": ["api", "student", "exams", "start"]
+            }
+          }
+        },
+        {
+          "name": "Submit Answer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questionId\": \"question-uuid\",\n  \"selectedAnswer\": \"A\",\n  \"isMarkedForReview\": false,\n  \"timeSpent\": 45\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/student/exams/:examId/answer",
+              "host": ["{{base_url}}"],
+              "path": ["api", "student", "exams", ":examId", "answer"],
+              "variable": [
+                {
+                  "key": "examId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Submit Exam",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/student/exams/:examId/submit",
+              "host": ["{{base_url}}"],
+              "path": ["api", "student", "exams", ":examId", "submit"],
+              "variable": [
+                {
+                  "key": "examId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Exam History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/student/exams/history",
+              "host": ["{{base_url}}"],
+              "path": ["api", "student", "exams", "history"]
+            }
+          }
+        },
+        {
+          "name": "Get Exam Result",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/student/exams/:examId/result",
+              "host": ["{{base_url}}"],
+              "path": ["api", "student", "exams", ":examId", "result"],
+              "variable": [
+                {
+                  "key": "examId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📝 Exam - Public",
+      "item": [
+        {
+          "name": "Get All Published Papers",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/exam/papers",
+              "host": ["{{base_url}}"],
+              "path": ["api", "exam", "papers"]
+            }
+          }
+        },
+        {
+          "name": "Get Paper With Questions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/exam/papers/:paperId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "exam", "papers", ":paperId"],
+              "variable": [
+                {
+                  "key": "paperId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get All Published Mock Tests",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/exam/mock-tests",
+              "host": ["{{base_url}}"],
+              "path": ["api", "exam", "mock-tests"]
+            }
+          }
+        },
+        {
+          "name": "Get Mock Test With Questions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/exam/mock-tests/:mockTestId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "exam", "mock-tests", ":mockTestId"],
+              "variable": [
+                {
+                  "key": "mockTestId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🎓 Practice",
+      "item": [
+        {
+          "name": "Get Practice Questions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/practice/questions?subject=physics&topic=mechanics&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "practice", "questions"],
+              "query": [
+                {
+                  "key": "subject",
+                  "value": "physics"
+                },
+                {
+                  "key": "topic",
+                  "value": "mechanics"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Submit Practice Answer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questionId\": \"question-uuid\",\n  \"selectedAnswer\": \"A\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/practice/answer",
+              "host": ["{{base_url}}"],
+              "path": ["api", "practice", "answer"]
+            }
+          }
+        },
+        {
+          "name": "Get Practice History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/practice/history",
+              "host": ["{{base_url}}"],
+              "path": ["api", "practice", "history"]
+            }
+          }
+        },
+        {
+          "name": "Get Practice Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/practice/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "practice", "stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📬 Contact",
+      "item": [
+        {
+          "name": "Submit Contact Form",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"phone\": \"+91 9876543210\",\n  \"subject\": \"Inquiry about courses\",\n  \"message\": \"I would like to know more about your NEET preparation courses.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/contact",
+              "host": ["{{base_url}}"],
+              "path": ["api", "contact"]
+            }
+          }
+        },
+        {
+          "name": "Get All Contact Messages (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/contact-messages",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "contact-messages"]
+            }
+          }
+        },
+        {
+          "name": "Mark Message as Read (Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/contact-messages/:messageId/read",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "contact-messages", ":messageId", "read"],
+              "variable": [
+                {
+                  "key": "messageId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Contact Message (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/contact-messages/:messageId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "contact-messages", ":messageId"],
+              "variable": [
+                {
+                  "key": "messageId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📚 Subjects (Public)",
+      "item": [
+        {
+          "name": "Get Active Subjects",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/subjects",
+              "host": ["{{base_url}}"],
+              "path": ["api", "subjects"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔧 System",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "API Docs (Swagger)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api-docs",
+              "host": ["{{base_url}}"],
+              "path": ["api-docs"]
+            }
+          }
+        },
+        {
+          "name": "Swagger JSON Spec",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api-docs.json",
+              "host": ["{{base_url}}"],
+              "path": ["api-docs.json"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
