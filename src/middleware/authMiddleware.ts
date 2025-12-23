@@ -16,7 +16,7 @@ declare global {
         email: string;
         name: string;
         role: 'admin' | 'student';
-        authType?: 'jwt' | 'firebase';
+        authType: 'jwt' | 'firebase'; // Always set when user is authenticated
       };
     }
   }
@@ -218,6 +218,7 @@ export async function authenticateSSE(req: Request, res: Response, next: NextFun
       email: user.email,
       name: user.name,
       role: user.role,
+      authType: 'jwt', // SSE authentication uses JWT only
     };
 
     next();
