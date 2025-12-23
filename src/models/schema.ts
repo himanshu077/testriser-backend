@@ -455,7 +455,7 @@ export const contactMessages = pgTable('contact_messages', {
 
 export const aiChatSessions = pgTable('ai_chat_sessions', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }), // nullable for anonymous users
+  userId: text('user_id'), // Firebase UID (string) or JWT-based UUID - nullable for anonymous users
   sessionId: varchar('session_id', { length: 100 }).notNull().unique(), // unique identifier for anonymous sessions
   subjectCode: varchar('subject_code', { length: 50 }).notNull(),
   chapterSlug: varchar('chapter_slug', { length: 500 }).notNull(),
@@ -489,7 +489,7 @@ export const aiChatMessages = pgTable('ai_chat_messages', {
 
 export const aiUsageTracking = pgTable('ai_usage_tracking', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }), // nullable for anonymous
+  userId: text('user_id'), // Firebase UID (string) or JWT-based UUID - nullable for anonymous
   sessionId: varchar('session_id', { length: 100 }), // for anonymous tracking
   date: timestamp('date').notNull().defaultNow(),
   questionCount: integer('question_count').notNull().default(1),
@@ -611,11 +611,8 @@ export const questionPracticeRelations = relations(questionPractice, ({ one }) =
   }),
 }));
 
-export const aiChatSessionsRelations = relations(aiChatSessions, ({ one, many }) => ({
-  user: one(users, {
-    fields: [aiChatSessions.userId],
-    references: [users.id],
-  }),
+export const aiChatSessionsRelations = relations(aiChatSessions, ({ many }) => ({
+  // Note: userId can be either Firebase UID or JWT UUID, so no direct foreign key relation
   messages: many(aiChatMessages),
 }));
 
@@ -626,11 +623,8 @@ export const aiChatMessagesRelations = relations(aiChatMessages, ({ one }) => ({
   }),
 }));
 
-export const aiUsageTrackingRelations = relations(aiUsageTracking, ({ one }) => ({
-  user: one(users, {
-    fields: [aiUsageTracking.userId],
-    references: [users.id],
-  }),
+export const aiUsageTrackingRelations = relations(aiUsageTracking, () => ({
+  // Note: userId can be either Firebase UID or JWT UUID, so no direct foreign key relation
 }));
 
 // ============================================================================

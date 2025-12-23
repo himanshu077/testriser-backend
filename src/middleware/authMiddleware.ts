@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { db } from '../config/database';
 import { users } from '../models/schema';
 import { eq } from 'drizzle-orm';
+import { verifyFirebaseToken } from '../config/firebase-admin';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -15,6 +16,7 @@ declare global {
         email: string;
         name: string;
         role: 'admin' | 'student';
+        authType?: 'jwt' | 'firebase';
       };
     }
   }
@@ -22,7 +24,7 @@ declare global {
 
 /**
  * Middleware to verify authentication token
- * Validates the session token and attaches user info to request
+ * Supports both JWT (admin) and Firebase (student) authentication
  */
 export async function authenticate(req: Request, res: Response, next: NextFunction) {
   try {
@@ -38,7 +40,7 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
 
     const token = authHeader.substring(7).trim(); // Remove 'Bearer ' prefix and trim whitespace
 
-    // Validate token format (JWT should have 3 parts separated by dots)
+    // Validate token format (both JWT and Firebase tokens have 3 parts)
     if (!token || token.split('.').length !== 3) {
       console.error('Invalid token format:', {
         tokenLength: token?.length,
@@ -51,32 +53,69 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
       });
     }
 
-    // Verify JWT token
-    const decoded = jwt.verify(token, JWT_SECRET) as {
-      id: string;
-      email: string;
-      role: 'admin' | 'student';
-    };
+    // Try Firebase authentication first (Firebase tokens are typically longer)
+    if (token.length > 500) {
+      try {
+        const decodedToken = await verifyFirebaseToken(token);
 
-    // Get full user details from database
-    const [user] = await db.select().from(users).where(eq(users.id, decoded.id)).limit(1);
+        // Firebase user authenticated
+        req.user = {
+          id: decodedToken.uid,
+          email: decodedToken.email || '',
+          name: decodedToken.name || decodedToken.email?.split('@')[0] || 'Student',
+          role: 'student',
+          authType: 'firebase',
+        };
 
-    if (!user) {
-      return res.status(401).json({
-        error: 'Unauthorized',
-        message: 'User not found',
-      });
+        return next();
+      } catch {
+        // Not a valid Firebase token, try JWT below
+        console.log('Firebase verification failed, trying JWT');
+      }
     }
 
-    // Attach user to request
-    req.user = {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-    };
+    // Try JWT authentication
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET) as {
+        id?: string;
+        userId?: string;
+        email: string;
+        role: 'admin' | 'student';
+      };
 
-    next();
+      // Support both 'id' and 'userId' fields
+      const userId = decoded.id || decoded.userId;
+      if (!userId) {
+        throw new Error('Token missing user ID');
+      }
+
+      // Get full user details from database
+      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+
+      if (!user) {
+        return res.status(401).json({
+          error: 'Unauthorized',
+          message: 'User not found',
+        });
+      }
+
+      // Attach user to request
+      req.user = {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        authType: 'jwt',
+      };
+
+      next();
+    } catch (jwtError) {
+      console.error('JWT verification failed:', jwtError);
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Invalid or expired token',
+      });
+    }
   } catch (error) {
     console.error('Authentication error:', error);
     return res.status(401).json({
