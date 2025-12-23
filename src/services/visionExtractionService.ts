@@ -41,6 +41,125 @@ if (typeof globalThis.FormData === 'undefined') {
 
 const execAsync = promisify(exec);
 
+/**
+ * Valid subject codes in the database
+ */
+const VALID_SUBJECT_CODES = ['physics', 'chemistry', 'botany', 'zoology'] as const;
+type ValidSubjectCode = (typeof VALID_SUBJECT_CODES)[number];
+
+/**
+ * Normalize subject string to valid subject code
+ * Maps various subject names/variations to the four valid codes
+ */
+function normalizeSubject(subject: string | undefined | null): ValidSubjectCode {
+  if (!subject) return 'physics'; // default
+
+  const normalized = subject.toLowerCase().trim();
+
+  // Direct matches
+  if (VALID_SUBJECT_CODES.includes(normalized as ValidSubjectCode)) {
+    return normalized as ValidSubjectCode;
+  }
+
+  // Physics mappings
+  if (
+    normalized.includes('physics') ||
+    normalized.includes('mechanics') ||
+    normalized.includes('thermodynamics') ||
+    normalized.includes('electrostatics') ||
+    normalized.includes('magnetism') ||
+    normalized.includes('optics') ||
+    normalized.includes('waves') ||
+    normalized.includes('modern physics') ||
+    normalized.includes('gravitation') ||
+    normalized.includes('kinematics') ||
+    normalized.includes('dynamics')
+  ) {
+    return 'physics';
+  }
+
+  // Chemistry mappings
+  if (
+    normalized.includes('chemistry') ||
+    normalized.includes('organic') ||
+    normalized.includes('inorganic') ||
+    normalized.includes('physical chemistry') ||
+    normalized.includes('chemical') ||
+    normalized.includes('coordination') ||
+    normalized.includes('electrochemistry') ||
+    normalized.includes('solutions') ||
+    normalized.includes('equilibrium')
+  ) {
+    return 'chemistry';
+  }
+
+  // Botany mappings (plant biology)
+  if (
+    normalized.includes('botany') ||
+    normalized.includes('plant') ||
+    normalized.includes('photosynthesis') ||
+    normalized.includes('cell cycle') ||
+    normalized.includes('cell division') ||
+    normalized.includes('biomolecules') ||
+    normalized.includes('molecular basis') ||
+    normalized.includes('genetics') ||
+    normalized.includes('evolution') ||
+    normalized.includes('morphology of flowering') ||
+    normalized.includes('anatomy of flowering') ||
+    normalized.includes('transport in plants') ||
+    normalized.includes('mineral nutrition') ||
+    normalized.includes('respiration in plants') ||
+    normalized.includes('plant growth') ||
+    normalized.includes('reproduction in organisms') ||
+    normalized.includes('sexual reproduction in flowering') ||
+    normalized.includes('biotechnology') ||
+    normalized.includes('microbes') ||
+    normalized.includes('biological classification') ||
+    normalized.includes('the living world') ||
+    normalized.includes('cell: the unit of life') ||
+    normalized.includes('cell biology')
+  ) {
+    return 'botany';
+  }
+
+  // Zoology mappings (animal biology)
+  if (
+    normalized.includes('zoology') ||
+    normalized.includes('animal') ||
+    normalized.includes('human') ||
+    normalized.includes('digestion') ||
+    normalized.includes('breathing') ||
+    normalized.includes('body fluids') ||
+    normalized.includes('circulation') ||
+    normalized.includes('excretory') ||
+    normalized.includes('locomotion') ||
+    normalized.includes('movement') ||
+    normalized.includes('neural') ||
+    normalized.includes('chemical coordination') ||
+    normalized.includes('endocrine') ||
+    (normalized.includes('reproduction') && !normalized.includes('plant')) ||
+    normalized.includes('human health') ||
+    normalized.includes('organisms and populations') ||
+    normalized.includes('ecosystem') ||
+    normalized.includes('biodiversity') ||
+    normalized.includes('environmental') ||
+    normalized.includes('animal kingdom') ||
+    normalized.includes('structural organisation')
+  ) {
+    return 'zoology';
+  }
+
+  // Biology fallback - determine by context
+  if (normalized.includes('biology')) {
+    // Default biology to botany (cell biology is often taught in botany section)
+    return 'botany';
+  }
+
+  // If unknown, try to infer from common patterns
+  console.warn(`⚠️ Unknown subject "${subject}", defaulting to physics`);
+  return 'physics';
+}
+
 interface VisionAPIResponse {
   responses: Array<{
     fullTextAnnotation?: {
@@ -718,8 +837,14 @@ For each question, provide a JSON object with:
 - questionText: Complete question text (for match-list, include "Match the List-I with List-II")
 - questionType: MUST be ONLY one of: "single_correct", "multiple_correct", "assertion_reason", "integer_type", or "match_list"
 - optionA, optionB, optionC, optionD: The four matching options (e.g., "A-IV, B-III, C-I, D-II")
-- subject: "Physics", "Chemistry", "Botany", or "Zoology"
-- topic: Main topic name
+- subject: MUST be ONLY one of these 4 values: "Physics", "Chemistry", "Botany", or "Zoology"
+  ⚠️ CRITICAL: For NEET Biology questions, classify as follows:
+    * "Botany" - Plant biology, cell biology, genetics, evolution, biotechnology, microbes
+    * "Zoology" - Animal biology, human physiology, ecology, environmental biology
+  ⚠️ NEVER use generic "Biology" - always choose either "Botany" or "Zoology"
+- topic: Main chapter/topic name (e.g., "Mechanics", "Thermodynamics", "Organic Chemistry", "Cell Division", "Human Physiology")
+- subtopic: Specific subtopic within the chapter (e.g., "Newton's Laws", "Carnot Cycle", "Alkanes", "Mitosis", "Digestion")
+  ⚠️ IMPORTANT: Always provide subtopic when possible - it helps students focus their study
 - difficulty: MUST be ONLY one of: "easy", "medium", or "hard"
   ⚠️ WARNING: NEVER use "numerical", "conceptual", "fact", or "assertion" for difficulty!
   ⚠️ These values ONLY go in cognitiveLevel field!
@@ -746,6 +871,7 @@ For each question, provide a JSON object with:
 - diagramDescription: Brief description of any diagram
 
 FIELD VALIDATION SUMMARY:
+✓ subject: ONLY "Physics", "Chemistry", "Botany", "Zoology" (NEVER use "Biology")
 ✓ difficulty: ONLY "easy", "medium", "hard"
 ✓ questionType: ONLY "single_correct", "multiple_correct", "assertion_reason", "integer_type", "match_list"
 ✓ cognitiveLevel: ONLY "fact", "conceptual", "numerical", "assertion"
@@ -1964,7 +2090,7 @@ Please confirm that you can see Question ${questionNumber} and its associated di
 
           await db.insert(questionsTable).values({
             bookId: bookId,
-            subject: question.subject?.toLowerCase() || 'unknown',
+            subject: normalizeSubject(question.subject),
             topic: question.topic || 'Unknown',
             subtopic: question.subtopic || null,
             examYear: question.examYear || null,
@@ -2376,7 +2502,7 @@ Return ONLY the JSON object, no additional text.`;
       // Return defaults if AI fails
       return {
         explanation: '',
-        subject: question.subject || 'physics',
+        subject: normalizeSubject(question.subject),
         topic: question.topic || '',
         subtopic: undefined,
         difficulty: (question.difficulty as 'easy' | 'medium' | 'hard') || 'medium',
