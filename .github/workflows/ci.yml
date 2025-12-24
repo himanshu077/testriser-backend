@@ -145,7 +145,7 @@ jobs:
       - name: Review code with Claude AI
         if: steps.changed-files.outputs.has_changes == 'true'
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           node << 'EOF'
