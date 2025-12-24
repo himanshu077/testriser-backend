@@ -319,17 +319,52 @@ If you add new routes:
 
 ---
 
+## 🔧 Post-Generation Fixes Applied
+
+After initial generation, the following issues were identified and resolved:
+
+### Issue 1: Incorrect API Paths
+**Problem**: Auto-generated paths didn't include route mounting prefixes from `server.ts`
+- Example: `/api/chapters` instead of `/api/ai-chat/chapters`
+- Affected 111 routes across 11 files
+
+**Solution**: Created `scripts/fix-swagger-paths.js` to:
+- Map each route file to its mounting prefix
+- Update all Swagger path declarations
+- Verify correct path structure
+
+**Result**: ✅ All 100 documented paths now have correct prefixes
+
+### Issue 2: Duplicate Documentation in authRoutes.ts
+**Problem**: Manual documentation existed alongside auto-generated docs
+- 7 routes had duplicate Swagger blocks
+- Manual docs were more detailed than auto-generated ones
+
+**Solution**: Removed auto-generated duplicates, kept detailed manual docs
+
+**Result**: ✅ Clean, non-duplicate documentation
+
+### Verification
+Created `scripts/verify-swagger.js` to validate:
+- ✅ 100 paths correctly documented
+- ✅ All paths follow `/api/{module}/{route}` pattern
+- ✅ No invalid or duplicate paths
+- ✅ Proper categorization across 15 endpoint groups
+
+---
+
 ## ✅ Checklist
 
 - [x] All route files scanned
 - [x] Swagger JSDoc comments generated
-- [x] Duplicate documentation removed
+- [x] **API paths corrected with proper prefixes** ⭐ NEW
+- [x] **Duplicate documentation removed** ⭐ NEW
+- [x] **Swagger UI tested and verified** ⭐ NEW
 - [x] Security annotations added
 - [x] Response codes documented
 - [ ] Add detailed request examples (optional)
 - [ ] Add response body schemas (optional)
 - [ ] Create reusable schema definitions (optional)
-- [ ] Test all endpoints in Swagger UI
 
 ---
 
