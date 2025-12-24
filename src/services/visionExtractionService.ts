@@ -41,6 +41,125 @@ if (typeof globalThis.FormData === 'undefined') {
 
 const execAsync = promisify(exec);
 
+/**
+ * Valid subject codes in the database
+ */
+const VALID_SUBJECT_CODES = ['physics', 'chemistry', 'botany', 'zoology'] as const;
+type ValidSubjectCode = (typeof VALID_SUBJECT_CODES)[number];
+
+/**
+ * Normalize subject string to valid subject code
+ * Maps various subject names/variations to the four valid codes
+ */
+function normalizeSubject(subject: string | undefined | null): ValidSubjectCode {
+  if (!subject) return 'physics'; // default
+
+  const normalized = subject.toLowerCase().trim();
+
+  // Direct matches
+  if (VALID_SUBJECT_CODES.includes(normalized as ValidSubjectCode)) {
+    return normalized as ValidSubjectCode;
+  }
+
+  // Physics mappings
+  if (
+    normalized.includes('physics') ||
+    normalized.includes('mechanics') ||
+    normalized.includes('thermodynamics') ||
+    normalized.includes('electrostatics') ||
+    normalized.includes('magnetism') ||
+    normalized.includes('optics') ||
+    normalized.includes('waves') ||
+    normalized.includes('modern physics') ||
+    normalized.includes('gravitation') ||
+    normalized.includes('kinematics') ||
+    normalized.includes('dynamics')
+  ) {
+    return 'physics';
+  }
+
+  // Chemistry mappings
+  if (
+    normalized.includes('chemistry') ||
+    normalized.includes('organic') ||
+    normalized.includes('inorganic') ||
+    normalized.includes('physical chemistry') ||
+    normalized.includes('chemical') ||
+    normalized.includes('coordination') ||
+    normalized.includes('electrochemistry') ||
+    normalized.includes('solutions') ||
+    normalized.includes('equilibrium')
+  ) {
+    return 'chemistry';
+  }
+
+  // Botany mappings (plant biology)
+  if (
+    normalized.includes('botany') ||
+    normalized.includes('plant') ||
+    normalized.includes('photosynthesis') ||
+    normalized.includes('cell cycle') ||
+    normalized.includes('cell division') ||
+    normalized.includes('biomolecules') ||
+    normalized.includes('molecular basis') ||
+    normalized.includes('genetics') ||
+    normalized.includes('evolution') ||
+    normalized.includes('morphology of flowering') ||
+    normalized.includes('anatomy of flowering') ||
+    normalized.includes('transport in plants') ||
+    normalized.includes('mineral nutrition') ||
+    normalized.includes('respiration in plants') ||
+    normalized.includes('plant growth') ||
+    normalized.includes('reproduction in organisms') ||
+    normalized.includes('sexual reproduction in flowering') ||
+    normalized.includes('biotechnology') ||
+    normalized.includes('microbes') ||
+    normalized.includes('biological classification') ||
+    normalized.includes('the living world') ||
+    normalized.includes('cell: the unit of life') ||
+    normalized.includes('cell biology')
+  ) {
+    return 'botany';
+  }
+
+  // Zoology mappings (animal biology)
+  if (
+    normalized.includes('zoology') ||
+    normalized.includes('animal') ||
+    normalized.includes('human') ||
+    normalized.includes('digestion') ||
+    normalized.includes('breathing') ||
+    normalized.includes('body fluids') ||
+    normalized.includes('circulation') ||
+    normalized.includes('excretory') ||
+    normalized.includes('locomotion') ||
+    normalized.includes('movement') ||
+    normalized.includes('neural') ||
+    normalized.includes('chemical coordination') ||
+    normalized.includes('endocrine') ||
+    (normalized.includes('reproduction') && !normalized.includes('plant')) ||
+    normalized.includes('human health') ||
+    normalized.includes('organisms and populations') ||
+    normalized.includes('ecosystem') ||
+    normalized.includes('biodiversity') ||
+    normalized.includes('environmental') ||
+    normalized.includes('animal kingdom') ||
+    normalized.includes('structural organisation')
+  ) {
+    return 'zoology';
+  }
+
+  // Biology fallback - determine by context
+  if (normalized.includes('biology')) {
+    // Default biology to botany (cell biology is often taught in botany section)
+    return 'botany';
+  }
+
+  // If unknown, try to infer from common patterns
+  console.warn(`⚠️ Unknown subject "${subject}", defaulting to physics`);
+  return 'physics';
+}
+
 interface VisionAPIResponse {
   responses: Array<{
     fullTextAnnotation?: {
@@ -718,8 +837,14 @@ For each question, provide a JSON object with:
 - questionText: Complete question text (for match-list, include "Match the List-I with List-II")
 - questionType: MUST be ONLY one of: "single_correct", "multiple_correct", "assertion_reason", "integer_type", or "match_list"
 - optionA, optionB, optionC, optionD: The four matching options (e.g., "A-IV, B-III, C-I, D-II")
-- subject: "Physics", "Chemistry", "Botany", or "Zoology"
-- topic: Main topic name
+- subject: MUST be ONLY one of these 4 values: "Physics", "Chemistry", "Botany", or "Zoology"
+  ⚠️ CRITICAL: For NEET Biology questions, classify as follows:
+    * "Botany" - Plant biology, cell biology, genetics, evolution, biotechnology, microbes
+    * "Zoology" - Animal biology, human physiology, ecology, environmental biology
+  ⚠️ NEVER use generic "Biology" - always choose either "Botany" or "Zoology"
+- topic: Main chapter/topic name (e.g., "Mechanics", "Thermodynamics", "Organic Chemistry", "Cell Division", "Human Physiology")
+- subtopic: Specific subtopic within the chapter (e.g., "Newton's Laws", "Carnot Cycle", "Alkanes", "Mitosis", "Digestion")
+  ⚠️ IMPORTANT: Always provide subtopic when possible - it helps students focus their study
 - difficulty: MUST be ONLY one of: "easy", "medium", or "hard"
   ⚠️ WARNING: NEVER use "numerical", "conceptual", "fact", or "assertion" for difficulty!
   ⚠️ These values ONLY go in cognitiveLevel field!
@@ -746,6 +871,7 @@ For each question, provide a JSON object with:
 - diagramDescription: Brief description of any diagram
 
 FIELD VALIDATION SUMMARY:
+✓ subject: ONLY "Physics", "Chemistry", "Botany", "Zoology" (NEVER use "Biology")
 ✓ difficulty: ONLY "easy", "medium", "hard"
 ✓ questionType: ONLY "single_correct", "multiple_correct", "assertion_reason", "integer_type", "match_list"
 ✓ cognitiveLevel: ONLY "fact", "conceptual", "numerical", "assertion"
@@ -1123,6 +1249,136 @@ Please describe:
     console.log(
       `\n   ✅ Diagram extraction: ${diagramSuccessCount} success, ${diagramFailCount} failed out of ${questionsWithDiagrams.length}`
     );
+  }
+
+  /**
+   * Generate a clean, high-quality diagram by analyzing the original and creating a better version
+   */
+  private async generateCleanDiagram(
+    question: ExtractedQuestion,
+    pageImagePath: string
+  ): Promise<string | null> {
+    try {
+      // Check if diagram already exists to avoid duplicates
+      const diagramFilename = `q${question.questionNumber}-diagram.png`;
+      const diagramPath = path.join(this.diagramsDir, diagramFilename);
+
+      try {
+        await fs.access(diagramPath);
+        console.log(`      ℹ️  Diagram already exists for Q${question.questionNumber}`);
+        return `/uploads/diagrams/${diagramFilename}`;
+      } catch {
+        // File doesn't exist, proceed with generation
+      }
+
+      await fs.mkdir(this.diagramsDir, { recursive: true });
+
+      // Step 1: Analyze the original diagram from PDF
+      const imageBuffer = await fs.readFile(pageImagePath);
+      const base64Image = imageBuffer.toString('base64');
+
+      console.log(`      📋 Analyzing original diagram for Q${question.questionNumber}...`);
+
+      const analysisPrompt = `Analyze this NEET exam question page and provide a DETAILED technical description of the diagram for Question ${question.questionNumber}.
+
+Question: "${question.questionText?.substring(0, 200)}..."
+Diagram type: "${question.diagramDescription || 'scientific diagram'}"
+
+Provide an EXTREMELY DETAILED description that captures:
+- Type of diagram (circuit, graph, biological, physics, chemistry)
+- All labels, letters, numbers, and symbols (EXACT text matters!)
+- Spatial arrangement and positioning
+- Arrows, directions, axes
+- Units, scales, measurements
+- Colors, lines, shapes
+- Any annotations or markings
+
+Return JSON:
+{
+  "diagramType": "circuit/graph/biological/physics/chemistry/other",
+  "detailedDescription": "Comprehensive technical description here",
+  "keyElements": ["element1", "element2"],
+  "labels": ["P", "Q", etc]
+}`;
+
+      const analysisResponse = await retryWithBackoff(
+        () =>
+          this.openai.chat.completions.create({
+            model: 'gpt-4o',
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  { type: 'text', text: analysisPrompt },
+                  {
+                    type: 'image_url',
+                    image_url: {
+                      url: `data:image/png;base64,${base64Image}`,
+                      detail: 'high',
+                    },
+                  },
+                ],
+              },
+            ],
+            max_tokens: 1000,
+            temperature: 0.1,
+          }),
+        { maxRetries: 2, shouldRetry: isRetryableError }
+      );
+
+      const analysisText = analysisResponse.choices[0]?.message?.content?.trim() || '';
+      const cleaned = analysisText.replace(/```json\s*|\s*```/g, '').trim();
+      const analysis = JSON.parse(cleaned);
+
+      // Step 2: Generate clean diagram using DALL-E 3
+      console.log(`      🎨 Generating clean diagram with DALL-E 3...`);
+
+      const dallePrompt = `Create a clean, professional NEET exam diagram. This is for educational purposes.
+
+${analysis.detailedDescription}
+
+Style requirements:
+- Clean white background
+- Black lines and text (high contrast)
+- Clear, legible labels matching exactly: ${analysis.labels?.join(', ') || 'as shown'}
+- Professional technical drawing quality
+- Educational textbook style
+- NO decorative elements
+- NO artistic interpretation
+- EXACT replica of the described diagram
+- All text must be readable and correct`;
+
+      const imageResponse = await retryWithBackoff(
+        () =>
+          this.openai.images.generate({
+            model: 'dall-e-3',
+            prompt: dallePrompt,
+            n: 1,
+            size: '1024x1024',
+            quality: 'hd', // High definition for better quality
+            style: 'natural',
+          }),
+        { maxRetries: 2, shouldRetry: isRetryableError }
+      );
+
+      const imageUrl = imageResponse.data?.[0]?.url;
+      if (!imageUrl) {
+        throw new Error('No image URL from DALL-E');
+      }
+
+      // Download and save the generated diagram
+      const downloadResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+      const imageData = Buffer.from(downloadResponse.data);
+
+      await fs.writeFile(diagramPath, imageData);
+
+      console.log(`      ✅ High-quality diagram generated and saved`);
+
+      return `/uploads/diagrams/${diagramFilename}`;
+    } catch (error: any) {
+      console.error(`      ❌ Failed to generate diagram: ${error.message}`);
+      return null;
+    }
   }
 
   /**
@@ -1568,6 +1824,28 @@ Please confirm that you can see Question ${questionNumber} and its associated di
 
           console.log(`✅ Extracted ${questions.length} questions from page ${page.pageNumber}`);
 
+          // Extract diagrams for questions that need them
+          const questionsWithDiagrams = questions.filter((q) => q.hasDiagram && !q.diagramImage);
+          if (questionsWithDiagrams.length > 0) {
+            console.log(`   🎨 Processing ${questionsWithDiagrams.length} diagram(s)...`);
+
+            for (const question of questionsWithDiagrams) {
+              try {
+                // Generate clean diagram using OpenAI
+                const diagramUrl = await service.generateCleanDiagram(question, absoluteFilePath);
+
+                if (diagramUrl) {
+                  question.diagramImage = diagramUrl;
+                  console.log(`      ✅ Q${question.questionNumber}: Clean diagram generated`);
+                } else {
+                  console.log(`      ⚠️  Q${question.questionNumber}: Diagram generation failed`);
+                }
+              } catch (error: any) {
+                console.error(`      ❌ Q${question.questionNumber}: ${error.message}`);
+              }
+            }
+          }
+
           // Save questions to database as draft (pending review)
           for (const question of questions) {
             // Validate difficulty field - ensure it's one of the valid enum values
@@ -1591,6 +1869,7 @@ Please confirm that you can see Question ${questionNumber} and its associated di
             await db.insert(questionsTable).values({
               bookId,
               ...question,
+              questionImage: question.diagramImage || null, // Map diagramImage to questionImage field
               difficulty: validDifficulty,
               questionType: validQuestionType,
               isActive: false, // Draft - requires admin review before going live
@@ -1811,7 +2090,7 @@ Please confirm that you can see Question ${questionNumber} and its associated di
 
           await db.insert(questionsTable).values({
             bookId: bookId,
-            subject: question.subject?.toLowerCase() || 'unknown',
+            subject: normalizeSubject(question.subject),
             topic: question.topic || 'Unknown',
             subtopic: question.subtopic || null,
             examYear: question.examYear || null,
@@ -2223,7 +2502,7 @@ Return ONLY the JSON object, no additional text.`;
       // Return defaults if AI fails
       return {
         explanation: '',
-        subject: question.subject || 'physics',
+        subject: normalizeSubject(question.subject),
         topic: question.topic || '',
         subtopic: undefined,
         difficulty: (question.difficulty as 'easy' | 'medium' | 'hard') || 'medium',
