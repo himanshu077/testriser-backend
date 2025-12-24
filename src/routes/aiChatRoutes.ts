@@ -16,7 +16,7 @@ const router = Router();
  */
 /**
  * @swagger
- * /api/chapters:
+ * /api/ai-chat/chapters:
  *   get:
  *     summary: Retrieve chapters
  *     tags: [AI Chat]
@@ -40,7 +40,7 @@ router.get('/chapters', dualAuthenticate, publicChaptersController.getPublicChap
  */
 /**
  * @swagger
- * /api/subjects:
+ * /api/ai-chat/subjects:
  *   get:
  *     summary: Retrieve subjects
  *     tags: [AI Chat]
@@ -63,7 +63,7 @@ router.get('/subjects', dualAuthenticate, publicChaptersController.getActiveSubj
  */
 /**
  * @swagger
- * /api/session:
+ * /api/ai-chat/session:
  *   post:
  *     summary: Create session
  *     tags: [AI Chat]
@@ -86,7 +86,7 @@ router.post('/session', dualAuthenticate, aiChatController.getChatSession);
  */
 /**
  * @swagger
- * /api/session/{sessionId}:
+ * /api/ai-chat/session/{sessionId}:
  *   get:
  *     summary: Retrieve session
  *     tags: [AI Chat]
@@ -109,7 +109,7 @@ router.get('/session/:sessionId', dualAuthenticate, aiChatController.getChatHist
  */
 /**
  * @swagger
- * /api/message:
+ * /api/ai-chat/message:
  *   post:
  *     summary: Create message
  *     tags: [AI Chat]
@@ -137,7 +137,7 @@ router.post(
  */
 /**
  * @swagger
- * /api/session/{sessionId}:
+ * /api/ai-chat/session/{sessionId}:
  *   delete:
  *     summary: Delete session
  *     tags: [AI Chat]
@@ -162,7 +162,7 @@ router.delete('/session/:sessionId', dualAuthenticate, aiChatController.clearCha
  */
 /**
  * @swagger
- * /api/my-sessions:
+ * /api/ai-chat/my-sessions:
  *   get:
  *     summary: Retrieve my-sessions
  *     tags: [AI Chat]
@@ -185,7 +185,7 @@ router.get('/my-sessions', dualAuthenticate, aiChatController.getUserSessions);
  */
 /**
  * @swagger
- * /api/usage:
+ * /api/ai-chat/usage:
  *   get:
  *     summary: Retrieve usage
  *     tags: [AI Chat]
@@ -208,7 +208,7 @@ router.get('/usage', dualAuthenticate, aiChatController.getDailyUsage);
  */
 /**
  * @swagger
- * /api/recent-questions:
+ * /api/ai-chat/recent-questions:
  *   get:
  *     summary: Retrieve recent-questions
  *     tags: [AI Chat]
@@ -231,7 +231,7 @@ router.get('/recent-questions', dualAuthenticate, aiChatController.getRecentQues
  */
 /**
  * @swagger
- * /api/message-counts:
+ * /api/ai-chat/message-counts:
  *   get:
  *     summary: Retrieve message-counts
  *     tags: [AI Chat]

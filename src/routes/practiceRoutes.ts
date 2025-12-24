@@ -13,7 +13,7 @@ router.use(authenticate);
 
 /**
  * @swagger
- * /api/questions:
+ * /api/practice/questions:
  *   get:
  *     summary: Retrieve questions
  *     tags: [Practice]
@@ -27,7 +27,7 @@ router.use(authenticate);
 router.get('/questions', practiceController.getPracticeQuestions);
 /**
  * @swagger
- * /api/answer:
+ * /api/practice/answer:
  *   post:
  *     summary: Create answer
  *     tags: [Practice]
@@ -41,7 +41,7 @@ router.get('/questions', practiceController.getPracticeQuestions);
 router.post('/answer', practiceController.submitPracticeAnswer);
 /**
  * @swagger
- * /api/history:
+ * /api/practice/history:
  *   get:
  *     summary: Retrieve history
  *     tags: [Practice]
@@ -55,7 +55,7 @@ router.post('/answer', practiceController.submitPracticeAnswer);
 router.get('/history', practiceController.getPracticeHistory);
 /**
  * @swagger
- * /api/stats:
+ * /api/practice/stats:
  *   get:
  *     summary: Retrieve stats
  *     tags: [Practice]

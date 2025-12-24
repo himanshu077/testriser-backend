@@ -107,7 +107,7 @@ router.get('/', authenticate, requireAdmin, getAllStudents);
  */
 /**
  * @swagger
- * /api/{id}:
+ * /api/students/{id}:
  *   get:
  *     summary: Retrieve students
  *     tags: [Students]

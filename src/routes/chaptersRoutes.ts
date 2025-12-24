@@ -35,7 +35,7 @@ router.get('/', dualAuthenticate, getPublicChapters);
 // GET /api/chapters/subjects
 /**
  * @swagger
- * /api/subjects:
+ * /api/chapters/subjects:
  *   get:
  *     summary: Retrieve subjects
  *     tags: [Chapters]

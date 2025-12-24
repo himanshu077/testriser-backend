@@ -13,7 +13,7 @@ router.use(authenticate, requireStudent);
 
 /**
  * @swagger
- * /api/exams/start:
+ * /api/student/exams/start:
  *   post:
  *     summary: Create start
  *     tags: [Student Exams]
@@ -27,7 +27,7 @@ router.use(authenticate, requireStudent);
 router.post('/exams/start', studentExamsController.startExam);
 /**
  * @swagger
- * /api/exams/{examId}/answer:
+ * /api/student/exams/{examId}/answer:
  *   post:
  *     summary: Create answer
  *     tags: [Student Exams]
@@ -41,7 +41,7 @@ router.post('/exams/start', studentExamsController.startExam);
 router.post('/exams/:examId/answer', studentExamsController.submitAnswer);
 /**
  * @swagger
- * /api/exams/{examId}/submit:
+ * /api/student/exams/{examId}/submit:
  *   post:
  *     summary: Create submit
  *     tags: [Student Exams]
@@ -55,7 +55,7 @@ router.post('/exams/:examId/answer', studentExamsController.submitAnswer);
 router.post('/exams/:examId/submit', studentExamsController.submitExam);
 /**
  * @swagger
- * /api/exams/history:
+ * /api/student/exams/history:
  *   get:
  *     summary: Retrieve history
  *     tags: [Student Exams]
@@ -69,7 +69,7 @@ router.post('/exams/:examId/submit', studentExamsController.submitExam);
 router.get('/exams/history', studentExamsController.getExamHistory);
 /**
  * @swagger
- * /api/exams/{examId}/result:
+ * /api/student/exams/{examId}/result:
  *   get:
  *     summary: Retrieve result
  *     tags: [Student Exams]

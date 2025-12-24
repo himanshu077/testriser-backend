@@ -13,7 +13,7 @@ const router = Router();
  */
 /**
  * @swagger
- * /api/papers:
+ * /api/exam/papers:
  *   get:
  *     summary: Retrieve papers
  *     tags: [Exams]
@@ -46,7 +46,7 @@ router.get('/papers', async (req, res) => {
  */
 /**
  * @swagger
- * /api/papers/{id}:
+ * /api/exam/papers/{id}:
  *   get:
  *     summary: Retrieve papers
  *     tags: [Exams]
@@ -106,7 +106,7 @@ router.get('/papers/:id', authenticate, async (req, res) => {
  */
 /**
  * @swagger
- * /api/mock-tests:
+ * /api/exam/mock-tests:
  *   get:
  *     summary: Retrieve mock-tests
  *     tags: [Exams]
@@ -142,7 +142,7 @@ router.get('/mock-tests', async (req, res) => {
  */
 /**
  * @swagger
- * /api/mock-tests/{id}:
+ * /api/exam/mock-tests/{id}:
  *   get:
  *     summary: Retrieve mock-tests
  *     tags: [Exams]

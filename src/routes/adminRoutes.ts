@@ -19,7 +19,7 @@ router.use(authenticate, requireAdmin);
 
 /**
  * @swagger
- * /api/papers:
+ * /api/admin/papers:
  *   get:
  *     summary: Retrieve papers
  *     tags: [Admin]
@@ -33,7 +33,7 @@ router.use(authenticate, requireAdmin);
 router.get('/papers', papersController.getAllPapers);
 /**
  * @swagger
- * /api/papers/pyq:
+ * /api/admin/papers/pyq:
  *   get:
  *     summary: Retrieve pyq
  *     tags: [Admin]
@@ -47,7 +47,7 @@ router.get('/papers', papersController.getAllPapers);
 router.get('/papers/pyq', papersController.getPYQPapers);
 /**
  * @swagger
- * /api/papers/pyq/{year}/questions:
+ * /api/admin/papers/pyq/{year}/questions:
  *   get:
  *     summary: Retrieve questions
  *     tags: [Admin]
@@ -61,7 +61,7 @@ router.get('/papers/pyq', papersController.getPYQPapers);
 router.get('/papers/pyq/:year/questions', papersController.getPYQPaperQuestions);
 /**
  * @swagger
- * /api/papers/{id}:
+ * /api/admin/papers/{id}:
  *   get:
  *     summary: Retrieve papers
  *     tags: [Admin]
@@ -75,7 +75,7 @@ router.get('/papers/pyq/:year/questions', papersController.getPYQPaperQuestions)
 router.get('/papers/:id', papersController.getPaperById);
 /**
  * @swagger
- * /api/papers:
+ * /api/admin/papers:
  *   post:
  *     summary: Create papers
  *     tags: [Admin]
@@ -89,7 +89,7 @@ router.get('/papers/:id', papersController.getPaperById);
 router.post('/papers', papersController.createPaper);
 /**
  * @swagger
- * /api/papers/{id}:
+ * /api/admin/papers/{id}:
  *   put:
  *     summary: Update papers
  *     tags: [Admin]
@@ -105,7 +105,7 @@ router.post('/papers', papersController.createPaper);
 router.put('/papers/:id', papersController.updatePaper);
 /**
  * @swagger
- * /api/papers/{id}:
+ * /api/admin/papers/{id}:
  *   delete:
  *     summary: Delete papers
  *     tags: [Admin]
@@ -121,7 +121,7 @@ router.put('/papers/:id', papersController.updatePaper);
 router.delete('/papers/:id', papersController.deletePaper);
 /**
  * @swagger
- * /api/papers/{id}/questions:
+ * /api/admin/papers/{id}/questions:
  *   get:
  *     summary: Retrieve questions
  *     tags: [Admin]
@@ -135,7 +135,7 @@ router.delete('/papers/:id', papersController.deletePaper);
 router.get('/papers/:id/questions', papersController.getPaperQuestions);
 /**
  * @swagger
- * /api/papers/{id}/publish:
+ * /api/admin/papers/{id}/publish:
  *   post:
  *     summary: Create publish
  *     tags: [Admin]
@@ -154,7 +154,7 @@ router.post('/papers/:id/publish', papersController.publishPaper);
 
 /**
  * @swagger
- * /api/questions:
+ * /api/admin/questions:
  *   get:
  *     summary: Retrieve questions
  *     tags: [Admin]
@@ -168,7 +168,7 @@ router.post('/papers/:id/publish', papersController.publishPaper);
 router.get('/questions', questionsController.getAllQuestions);
 /**
  * @swagger
- * /api/questions/filter-options:
+ * /api/admin/questions/filter-options:
  *   get:
  *     summary: Retrieve filter-options
  *     tags: [Admin]
@@ -182,7 +182,7 @@ router.get('/questions', questionsController.getAllQuestions);
 router.get('/questions/filter-options', questionsController.getFilterOptions);
 /**
  * @swagger
- * /api/questions/{id}:
+ * /api/admin/questions/{id}:
  *   get:
  *     summary: Retrieve questions
  *     tags: [Admin]
@@ -196,7 +196,7 @@ router.get('/questions/filter-options', questionsController.getFilterOptions);
 router.get('/questions/:id', questionsController.getQuestionById);
 /**
  * @swagger
- * /api/questions:
+ * /api/admin/questions:
  *   post:
  *     summary: Create questions
  *     tags: [Admin]
@@ -210,7 +210,7 @@ router.get('/questions/:id', questionsController.getQuestionById);
 router.post('/questions', questionsController.createQuestion);
 /**
  * @swagger
- * /api/questions/bulk:
+ * /api/admin/questions/bulk:
  *   post:
  *     summary: Create bulk
  *     tags: [Admin]
@@ -224,7 +224,7 @@ router.post('/questions', questionsController.createQuestion);
 router.post('/questions/bulk', questionsController.bulkCreateQuestions);
 /**
  * @swagger
- * /api/questions/upload-pdf:
+ * /api/admin/questions/upload-pdf:
  *   post:
  *     summary: Create upload-pdf
  *     tags: [Admin]
@@ -238,7 +238,7 @@ router.post('/questions/bulk', questionsController.bulkCreateQuestions);
 router.post('/questions/upload-pdf', uploadPDFBook, questionsController.uploadPDFQuestions);
 /**
  * @swagger
- * /api/questions/{id}:
+ * /api/admin/questions/{id}:
  *   put:
  *     summary: Update questions
  *     tags: [Admin]
@@ -254,7 +254,7 @@ router.post('/questions/upload-pdf', uploadPDFBook, questionsController.uploadPD
 router.put('/questions/:id', questionsController.updateQuestion);
 /**
  * @swagger
- * /api/questions/{id}:
+ * /api/admin/questions/{id}:
  *   delete:
  *     summary: Delete questions
  *     tags: [Admin]
@@ -270,7 +270,7 @@ router.put('/questions/:id', questionsController.updateQuestion);
 router.delete('/questions/:id', questionsController.deleteQuestion);
 /**
  * @swagger
- * /api/questions/{id}/upload-diagram:
+ * /api/admin/questions/{id}/upload-diagram:
  *   post:
  *     summary: Create upload-diagram
  *     tags: [Admin]
@@ -288,7 +288,7 @@ router.post(
 );
 /**
  * @swagger
- * /api/questions/{id}/diagram:
+ * /api/admin/questions/{id}/diagram:
  *   delete:
  *     summary: Delete diagram
  *     tags: [Admin]
@@ -304,7 +304,7 @@ router.post(
 router.delete('/questions/:id/diagram', questionsController.deleteQuestionDiagram);
 /**
  * @swagger
- * /api/questions/{id}/generate-diagram:
+ * /api/admin/questions/{id}/generate-diagram:
  *   post:
  *     summary: Create generate-diagram
  *     tags: [Admin]
@@ -318,7 +318,7 @@ router.delete('/questions/:id/diagram', questionsController.deleteQuestionDiagra
 router.post('/questions/:id/generate-diagram', questionsController.generateQuestionDiagram);
 /**
  * @swagger
- * /api/questions/{id}/crop-diagram:
+ * /api/admin/questions/{id}/crop-diagram:
  *   post:
  *     summary: Create crop-diagram
  *     tags: [Admin]
@@ -332,7 +332,7 @@ router.post('/questions/:id/generate-diagram', questionsController.generateQuest
 router.post('/questions/:id/crop-diagram', questionsController.cropQuestionDiagram);
 /**
  * @swagger
- * /api/questions/{id}/generate-explanation:
+ * /api/admin/questions/{id}/generate-explanation:
  *   post:
  *     summary: Create generate-explanation
  *     tags: [Admin]
@@ -346,7 +346,7 @@ router.post('/questions/:id/crop-diagram', questionsController.cropQuestionDiagr
 router.post('/questions/:id/generate-explanation', questionsController.generateExplanation);
 /**
  * @swagger
- * /api/questions/auto-generate-diagrams:
+ * /api/admin/questions/auto-generate-diagrams:
  *   post:
  *     summary: Create auto-generate-diagrams
  *     tags: [Admin]
@@ -362,7 +362,7 @@ router.post('/questions/auto-generate-diagrams', questionsController.autoGenerat
 // Question review/approval routes
 /**
  * @swagger
- * /api/questions/pending/count:
+ * /api/admin/questions/pending/count:
  *   get:
  *     summary: Retrieve count
  *     tags: [Admin]
@@ -376,7 +376,7 @@ router.post('/questions/auto-generate-diagrams', questionsController.autoGenerat
 router.get('/questions/pending/count', questionsController.getPendingCount);
 /**
  * @swagger
- * /api/questions/{id}/approve:
+ * /api/admin/questions/{id}/approve:
  *   patch:
  *     summary: Partially update approve
  *     tags: [Admin]
@@ -392,7 +392,7 @@ router.get('/questions/pending/count', questionsController.getPendingCount);
 router.patch('/questions/:id/approve', questionsController.approveQuestion);
 /**
  * @swagger
- * /api/questions/{id}/reject:
+ * /api/admin/questions/{id}/reject:
  *   patch:
  *     summary: Partially update reject
  *     tags: [Admin]
@@ -408,7 +408,7 @@ router.patch('/questions/:id/approve', questionsController.approveQuestion);
 router.patch('/questions/:id/reject', questionsController.rejectQuestion);
 /**
  * @swagger
- * /api/questions/bulk-approve:
+ * /api/admin/questions/bulk-approve:
  *   post:
  *     summary: Create bulk-approve
  *     tags: [Admin]
@@ -427,7 +427,7 @@ router.post('/questions/bulk-approve', questionsController.bulkApproveQuestions)
 
 /**
  * @swagger
- * /api/mock-tests:
+ * /api/admin/mock-tests:
  *   get:
  *     summary: Retrieve mock-tests
  *     tags: [Admin]
@@ -441,7 +441,7 @@ router.post('/questions/bulk-approve', questionsController.bulkApproveQuestions)
 router.get('/mock-tests', mockTestsController.getAllMockTests);
 /**
  * @swagger
- * /api/mock-tests/stats:
+ * /api/admin/mock-tests/stats:
  *   get:
  *     summary: Retrieve stats
  *     tags: [Admin]
@@ -455,7 +455,7 @@ router.get('/mock-tests', mockTestsController.getAllMockTests);
 router.get('/mock-tests/stats', mockTestsController.getMockTestStats);
 /**
  * @swagger
- * /api/mock-tests/generate:
+ * /api/admin/mock-tests/generate:
  *   post:
  *     summary: Create generate
  *     tags: [Admin]
@@ -469,7 +469,7 @@ router.get('/mock-tests/stats', mockTestsController.getMockTestStats);
 router.post('/mock-tests/generate', mockTestsController.generateMockTest);
 /**
  * @swagger
- * /api/mock-tests/{id}:
+ * /api/admin/mock-tests/{id}:
  *   get:
  *     summary: Retrieve mock-tests
  *     tags: [Admin]
@@ -483,7 +483,7 @@ router.post('/mock-tests/generate', mockTestsController.generateMockTest);
 router.get('/mock-tests/:id', mockTestsController.getMockTestById);
 /**
  * @swagger
- * /api/mock-tests:
+ * /api/admin/mock-tests:
  *   post:
  *     summary: Create mock-tests
  *     tags: [Admin]
@@ -497,7 +497,7 @@ router.get('/mock-tests/:id', mockTestsController.getMockTestById);
 router.post('/mock-tests', mockTestsController.createMockTest);
 /**
  * @swagger
- * /api/mock-tests/{id}/questions:
+ * /api/admin/mock-tests/{id}/questions:
  *   post:
  *     summary: Create questions
  *     tags: [Admin]
@@ -511,7 +511,7 @@ router.post('/mock-tests', mockTestsController.createMockTest);
 router.post('/mock-tests/:id/questions', mockTestsController.addQuestionsToMockTest);
 /**
  * @swagger
- * /api/mock-tests/{id}/regenerate:
+ * /api/admin/mock-tests/{id}/regenerate:
  *   post:
  *     summary: Create regenerate
  *     tags: [Admin]
@@ -525,7 +525,7 @@ router.post('/mock-tests/:id/questions', mockTestsController.addQuestionsToMockT
 router.post('/mock-tests/:id/regenerate', mockTestsController.regenerateMockTestQuestions);
 /**
  * @swagger
- * /api/mock-tests/{id}/questions:
+ * /api/admin/mock-tests/{id}/questions:
  *   delete:
  *     summary: Delete questions
  *     tags: [Admin]
@@ -541,7 +541,7 @@ router.post('/mock-tests/:id/regenerate', mockTestsController.regenerateMockTest
 router.delete('/mock-tests/:id/questions', mockTestsController.clearMockTestQuestions);
 /**
  * @swagger
- * /api/mock-tests/{id}:
+ * /api/admin/mock-tests/{id}:
  *   put:
  *     summary: Update mock-tests
  *     tags: [Admin]
@@ -557,7 +557,7 @@ router.delete('/mock-tests/:id/questions', mockTestsController.clearMockTestQues
 router.put('/mock-tests/:id', mockTestsController.updateMockTest);
 /**
  * @swagger
- * /api/mock-tests/{id}:
+ * /api/admin/mock-tests/{id}:
  *   delete:
  *     summary: Delete mock-tests
  *     tags: [Admin]
@@ -573,7 +573,7 @@ router.put('/mock-tests/:id', mockTestsController.updateMockTest);
 router.delete('/mock-tests/:id', mockTestsController.deleteMockTest);
 /**
  * @swagger
- * /api/mock-tests/{id}/publish:
+ * /api/admin/mock-tests/{id}/publish:
  *   post:
  *     summary: Create publish
  *     tags: [Admin]
@@ -592,7 +592,7 @@ router.post('/mock-tests/:id/publish', mockTestsController.publishMockTest);
 
 /**
  * @swagger
- * /api/contact-messages:
+ * /api/admin/contact-messages:
  *   get:
  *     summary: Retrieve contact-messages
  *     tags: [Admin]
@@ -606,7 +606,7 @@ router.post('/mock-tests/:id/publish', mockTestsController.publishMockTest);
 router.get('/contact-messages', contactController.getAllContactMessages);
 /**
  * @swagger
- * /api/contact-messages/{id}/read:
+ * /api/admin/contact-messages/{id}/read:
  *   put:
  *     summary: Update read
  *     tags: [Admin]
@@ -622,7 +622,7 @@ router.get('/contact-messages', contactController.getAllContactMessages);
 router.put('/contact-messages/:id/read', contactController.markMessageAsRead);
 /**
  * @swagger
- * /api/contact-messages/{id}:
+ * /api/admin/contact-messages/{id}:
  *   delete:
  *     summary: Delete contact-messages
  *     tags: [Admin]
@@ -643,7 +643,7 @@ router.delete('/contact-messages/:id', contactController.deleteContactMessage);
 
 /**
  * @swagger
- * /api/subjects:
+ * /api/admin/subjects:
  *   get:
  *     summary: Retrieve subjects
  *     tags: [Admin]
@@ -657,7 +657,7 @@ router.delete('/contact-messages/:id', contactController.deleteContactMessage);
 router.get('/subjects', subjectsController.getAllSubjects);
 /**
  * @swagger
- * /api/subjects/{id}:
+ * /api/admin/subjects/{id}:
  *   get:
  *     summary: Retrieve subjects
  *     tags: [Admin]
@@ -671,7 +671,7 @@ router.get('/subjects', subjectsController.getAllSubjects);
 router.get('/subjects/:id', subjectsController.getSubjectById);
 /**
  * @swagger
- * /api/subjects:
+ * /api/admin/subjects:
  *   post:
  *     summary: Create subjects
  *     tags: [Admin]
@@ -685,7 +685,7 @@ router.get('/subjects/:id', subjectsController.getSubjectById);
 router.post('/subjects', subjectsController.createSubject);
 /**
  * @swagger
- * /api/subjects/{id}:
+ * /api/admin/subjects/{id}:
  *   patch:
  *     summary: Partially update subjects
  *     tags: [Admin]
@@ -701,7 +701,7 @@ router.post('/subjects', subjectsController.createSubject);
 router.patch('/subjects/:id', subjectsController.updateSubject);
 /**
  * @swagger
- * /api/subjects/{id}:
+ * /api/admin/subjects/{id}:
  *   delete:
  *     summary: Delete subjects
  *     tags: [Admin]
@@ -717,7 +717,7 @@ router.patch('/subjects/:id', subjectsController.updateSubject);
 router.delete('/subjects/:id', subjectsController.deleteSubject);
 /**
  * @swagger
- * /api/subjects/reorder:
+ * /api/admin/subjects/reorder:
  *   put:
  *     summary: Update reorder
  *     tags: [Admin]
@@ -739,7 +739,7 @@ router.put('/subjects/reorder', subjectsController.reorderSubjects);
 // CRUD operations
 /**
  * @swagger
- * /api/curriculum-chapters:
+ * /api/admin/curriculum-chapters:
  *   get:
  *     summary: Retrieve curriculum-chapters
  *     tags: [Admin]
@@ -753,7 +753,7 @@ router.put('/subjects/reorder', subjectsController.reorderSubjects);
 router.get('/curriculum-chapters', curriculumChaptersController.getAllChapters);
 /**
  * @swagger
- * /api/curriculum-chapters/{id}:
+ * /api/admin/curriculum-chapters/{id}:
  *   get:
  *     summary: Retrieve curriculum-chapters
  *     tags: [Admin]
@@ -767,7 +767,7 @@ router.get('/curriculum-chapters', curriculumChaptersController.getAllChapters);
 router.get('/curriculum-chapters/:id', curriculumChaptersController.getChapterById);
 /**
  * @swagger
- * /api/curriculum-chapters:
+ * /api/admin/curriculum-chapters:
  *   post:
  *     summary: Create curriculum-chapters
  *     tags: [Admin]
@@ -781,7 +781,7 @@ router.get('/curriculum-chapters/:id', curriculumChaptersController.getChapterBy
 router.post('/curriculum-chapters', curriculumChaptersController.createChapter);
 /**
  * @swagger
- * /api/curriculum-chapters/{id}:
+ * /api/admin/curriculum-chapters/{id}:
  *   patch:
  *     summary: Partially update curriculum-chapters
  *     tags: [Admin]
@@ -797,7 +797,7 @@ router.post('/curriculum-chapters', curriculumChaptersController.createChapter);
 router.patch('/curriculum-chapters/:id', curriculumChaptersController.updateChapter);
 /**
  * @swagger
- * /api/curriculum-chapters/{id}:
+ * /api/admin/curriculum-chapters/{id}:
  *   delete:
  *     summary: Delete curriculum-chapters
  *     tags: [Admin]
@@ -815,7 +815,7 @@ router.delete('/curriculum-chapters/:id', curriculumChaptersController.deleteCha
 // Question mapping
 /**
  * @swagger
- * /api/curriculum-chapters/{id}/questions:
+ * /api/admin/curriculum-chapters/{id}/questions:
  *   get:
  *     summary: Retrieve questions
  *     tags: [Admin]
@@ -829,7 +829,7 @@ router.delete('/curriculum-chapters/:id', curriculumChaptersController.deleteCha
 router.get('/curriculum-chapters/:id/questions', curriculumChaptersController.getChapterQuestions);
 /**
  * @swagger
- * /api/curriculum-chapters/{id}/map-question:
+ * /api/admin/curriculum-chapters/{id}/map-question:
  *   post:
  *     summary: Create map-question
  *     tags: [Admin]
@@ -846,7 +846,7 @@ router.post(
 );
 /**
  * @swagger
- * /api/curriculum-chapters/{id}/unmap-question:
+ * /api/admin/curriculum-chapters/{id}/unmap-question:
  *   post:
  *     summary: Create unmap-question
  *     tags: [Admin]
@@ -863,7 +863,7 @@ router.post(
 );
 /**
  * @swagger
- * /api/curriculum-chapters/auto-map:
+ * /api/admin/curriculum-chapters/auto-map:
  *   post:
  *     summary: Create auto-map
  *     tags: [Admin]
@@ -877,7 +877,7 @@ router.post(
 router.post('/curriculum-chapters/auto-map', curriculumChaptersController.autoMapQuestions);
 /**
  * @swagger
- * /api/curriculum-chapters/mapping/uncertain:
+ * /api/admin/curriculum-chapters/mapping/uncertain:
  *   get:
  *     summary: Retrieve uncertain
  *     tags: [Admin]
@@ -894,7 +894,7 @@ router.get(
 );
 /**
  * @swagger
- * /api/curriculum-chapters/mapping/report:
+ * /api/admin/curriculum-chapters/mapping/report:
  *   get:
  *     summary: Retrieve report
  *     tags: [Admin]
@@ -910,7 +910,7 @@ router.get('/curriculum-chapters/mapping/report', curriculumChaptersController.g
 // Status management
 /**
  * @swagger
- * /api/curriculum-chapters/{id}/publish:
+ * /api/admin/curriculum-chapters/{id}/publish:
  *   post:
  *     summary: Create publish
  *     tags: [Admin]
@@ -924,7 +924,7 @@ router.get('/curriculum-chapters/mapping/report', curriculumChaptersController.g
 router.post('/curriculum-chapters/:id/publish', curriculumChaptersController.publishChapter);
 /**
  * @swagger
- * /api/curriculum-chapters/{id}/archive:
+ * /api/admin/curriculum-chapters/{id}/archive:
  *   post:
  *     summary: Create archive
  *     tags: [Admin]
@@ -938,7 +938,7 @@ router.post('/curriculum-chapters/:id/publish', curriculumChaptersController.pub
 router.post('/curriculum-chapters/:id/archive', curriculumChaptersController.archiveChapter);
 /**
  * @swagger
- * /api/curriculum-chapters/{id}/refresh-stats:
+ * /api/admin/curriculum-chapters/{id}/refresh-stats:
  *   post:
  *     summary: Create refresh-stats
  *     tags: [Admin]

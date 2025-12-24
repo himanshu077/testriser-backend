@@ -13,7 +13,7 @@ const router = Router();
 // GET /api/chapter-tests/generate?chapterId=X&testNumber=1&mode=test
 /**
  * @swagger
- * /api/generate:
+ * /api/chapter-tests/generate:
  *   get:
  *     summary: Retrieve generate
  *     tags: [Chapter Tests]
@@ -35,7 +35,7 @@ router.get('/generate', dualAuthenticate, generateChapterTest);
 // POST /api/chapter-tests/submit
 /**
  * @swagger
- * /api/submit:
+ * /api/chapter-tests/submit:
  *   post:
  *     summary: Create submit
  *     tags: [Chapter Tests]

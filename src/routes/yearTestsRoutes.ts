@@ -13,7 +13,7 @@ const router = Router();
 // GET /api/year-tests/generate?year=2025&mode=test
 /**
  * @swagger
- * /api/generate:
+ * /api/year-tests/generate:
  *   get:
  *     summary: Retrieve generate
  *     tags: [Year Tests]
@@ -35,7 +35,7 @@ router.get('/generate', dualAuthenticate, generateYearTest);
 // POST /api/year-tests/submit
 /**
  * @swagger
- * /api/submit:
+ * /api/year-tests/submit:
  *   post:
  *     summary: Create submit
  *     tags: [Year Tests]

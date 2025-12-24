@@ -29,7 +29,7 @@ const router = Router();
 // POST /api/admin/books/upload
 /**
  * @swagger
- * /api/upload:
+ * /api/admin/books/upload:
  *   post:
  *     summary: Create upload
  *     tags: [Books]
@@ -73,7 +73,7 @@ router.get('/', authenticate, requireRole(['admin']), getBooks);
 // GET /api/admin/books/:id
 /**
  * @swagger
- * /api/{id}:
+ * /api/admin/books/{id}:
  *   get:
  *     summary: Retrieve books
  *     tags: [Books]
@@ -95,7 +95,7 @@ router.get('/:id', authenticate, requireRole(['admin']), getBookById);
 // GET /api/admin/books/:id/questions
 /**
  * @swagger
- * /api/{id}/questions:
+ * /api/admin/books/{id}/questions:
  *   get:
  *     summary: Retrieve questions
  *     tags: [Books]
@@ -117,7 +117,7 @@ router.get('/:id/questions', authenticate, requireRole(['admin']), getBookQuesti
 // PATCH /api/admin/books/:id
 /**
  * @swagger
- * /api/{id}:
+ * /api/admin/books/{id}:
  *   patch:
  *     summary: Partially update books
  *     tags: [Books]
@@ -141,7 +141,7 @@ router.patch('/:id', authenticate, requireRole(['admin']), updateBook);
 // DELETE /api/admin/books/:id
 /**
  * @swagger
- * /api/{id}:
+ * /api/admin/books/{id}:
  *   delete:
  *     summary: Delete books
  *     tags: [Books]
@@ -165,7 +165,7 @@ router.delete('/:id', authenticate, requireRole(['admin']), deleteBook);
 // POST /api/admin/books/:id/retry
 /**
  * @swagger
- * /api/{id}/retry:
+ * /api/admin/books/{id}/retry:
  *   post:
  *     summary: Create retry
  *     tags: [Books]
@@ -188,7 +188,7 @@ router.post('/:id/retry', authenticate, requireRole(['admin']), retryProcessing)
 // Note: Uses query parameter auth because EventSource cannot send custom headers
 /**
  * @swagger
- * /api/{id}/progress/stream:
+ * /api/admin/books/{id}/progress/stream:
  *   get:
  *     summary: Retrieve stream
  *     tags: [Books]
@@ -210,7 +210,7 @@ router.get('/:id/progress/stream', authenticateSSE, requireRole(['admin']), stre
 // GET /api/admin/books/:id/extraction-report
 /**
  * @swagger
- * /api/{id}/extraction-report:
+ * /api/admin/books/{id}/extraction-report:
  *   get:
  *     summary: Retrieve extraction-report
  *     tags: [Books]
@@ -232,7 +232,7 @@ router.get('/:id/extraction-report', authenticate, requireRole(['admin']), getBo
 // GET /api/admin/books/:id/pages
 /**
  * @swagger
- * /api/{id}/pages:
+ * /api/admin/books/{id}/pages:
  *   get:
  *     summary: Retrieve pages
  *     tags: [Books]
@@ -254,7 +254,7 @@ router.get('/:id/pages', authenticate, requireRole(['admin']), getBookPages);
 // POST /api/admin/books/:id/retry-pages
 /**
  * @swagger
- * /api/{id}/retry-pages:
+ * /api/admin/books/{id}/retry-pages:
  *   post:
  *     summary: Create retry-pages
  *     tags: [Books]
@@ -276,7 +276,7 @@ router.post('/:id/retry-pages', authenticate, requireRole(['admin']), retryPages
 // POST /api/admin/books/:id/smart-retry
 /**
  * @swagger
- * /api/{id}/smart-retry:
+ * /api/admin/books/{id}/smart-retry:
  *   post:
  *     summary: Create smart-retry
  *     tags: [Books]
@@ -298,7 +298,7 @@ router.post('/:id/smart-retry', authenticate, requireRole(['admin']), smartRetry
 // POST /api/admin/books/:id/retry-section
 /**
  * @swagger
- * /api/{id}/retry-section:
+ * /api/admin/books/{id}/retry-section:
  *   post:
  *     summary: Create retry-section
  *     tags: [Books]
@@ -320,7 +320,7 @@ router.post('/:id/retry-section', authenticate, requireRole(['admin']), retrySec
 // POST /api/admin/books/:id/extract-answer-key
 /**
  * @swagger
- * /api/{id}/extract-answer-key:
+ * /api/admin/books/{id}/extract-answer-key:
  *   post:
  *     summary: Create extract-answer-key
  *     tags: [Books]
@@ -342,7 +342,7 @@ router.post('/:id/extract-answer-key', authenticate, requireRole(['admin']), ext
 // POST /api/admin/books/:id/apply-answer-key
 /**
  * @swagger
- * /api/{id}/apply-answer-key:
+ * /api/admin/books/{id}/apply-answer-key:
  *   post:
  *     summary: Create apply-answer-key
  *     tags: [Books]
