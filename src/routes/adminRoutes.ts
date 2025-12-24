@@ -17,78 +17,719 @@ router.use(authenticate, requireAdmin);
 // PAPERS ROUTES
 // ============================================================================
 
+/**
+ * @swagger
+ * /api/papers:
+ *   get:
+ *     summary: Retrieve papers
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       500:
+ *         description: Server error
+ */
+
 router.get('/papers', papersController.getAllPapers);
+/**
+ * @swagger
+ * /api/papers/pyq:
+ *   get:
+ *     summary: Retrieve pyq
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       500:
+ *         description: Server error
+ */
+
 router.get('/papers/pyq', papersController.getPYQPapers);
+/**
+ * @swagger
+ * /api/papers/pyq/{year}/questions:
+ *   get:
+ *     summary: Retrieve questions
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       500:
+ *         description: Server error
+ */
+
 router.get('/papers/pyq/:year/questions', papersController.getPYQPaperQuestions);
+/**
+ * @swagger
+ * /api/papers/{id}:
+ *   get:
+ *     summary: Retrieve papers
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       500:
+ *         description: Server error
+ */
+
 router.get('/papers/:id', papersController.getPaperById);
+/**
+ * @swagger
+ * /api/papers:
+ *   post:
+ *     summary: Create papers
+ *     tags: [Admin]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post('/papers', papersController.createPaper);
+/**
+ * @swagger
+ * /api/papers/{id}:
+ *   put:
+ *     summary: Update papers
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       404:
+ *         description: Not found
+ *       500:
+ *         description: Server error
+ */
+
 router.put('/papers/:id', papersController.updatePaper);
+/**
+ * @swagger
+ * /api/papers/{id}:
+ *   delete:
+ *     summary: Delete papers
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Deleted successfully
+ *       404:
+ *         description: Not found
+ *       500:
+ *         description: Server error
+ */
+
 router.delete('/papers/:id', papersController.deletePaper);
+/**
+ * @swagger
+ * /api/papers/{id}/questions:
+ *   get:
+ *     summary: Retrieve questions
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       500:
+ *         description: Server error
+ */
+
 router.get('/papers/:id/questions', papersController.getPaperQuestions);
+/**
+ * @swagger
+ * /api/papers/{id}/publish:
+ *   post:
+ *     summary: Create publish
+ *     tags: [Admin]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post('/papers/:id/publish', papersController.publishPaper);
 
 // ============================================================================
 // QUESTIONS ROUTES
 // ============================================================================
 
+/**
+ * @swagger
+ * /api/questions:
+ *   get:
+ *     summary: Retrieve questions
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       500:
+ *         description: Server error
+ */
+
 router.get('/questions', questionsController.getAllQuestions);
+/**
+ * @swagger
+ * /api/questions/filter-options:
+ *   get:
+ *     summary: Retrieve filter-options
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       500:
+ *         description: Server error
+ */
+
 router.get('/questions/filter-options', questionsController.getFilterOptions);
+/**
+ * @swagger
+ * /api/questions/{id}:
+ *   get:
+ *     summary: Retrieve questions
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       500:
+ *         description: Server error
+ */
+
 router.get('/questions/:id', questionsController.getQuestionById);
+/**
+ * @swagger
+ * /api/questions:
+ *   post:
+ *     summary: Create questions
+ *     tags: [Admin]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post('/questions', questionsController.createQuestion);
+/**
+ * @swagger
+ * /api/questions/bulk:
+ *   post:
+ *     summary: Create bulk
+ *     tags: [Admin]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post('/questions/bulk', questionsController.bulkCreateQuestions);
+/**
+ * @swagger
+ * /api/questions/upload-pdf:
+ *   post:
+ *     summary: Create upload-pdf
+ *     tags: [Admin]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post('/questions/upload-pdf', uploadPDFBook, questionsController.uploadPDFQuestions);
+/**
+ * @swagger
+ * /api/questions/{id}:
+ *   put:
+ *     summary: Update questions
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       404:
+ *         description: Not found
+ *       500:
+ *         description: Server error
+ */
+
 router.put('/questions/:id', questionsController.updateQuestion);
+/**
+ * @swagger
+ * /api/questions/{id}:
+ *   delete:
+ *     summary: Delete questions
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Deleted successfully
+ *       404:
+ *         description: Not found
+ *       500:
+ *         description: Server error
+ */
+
 router.delete('/questions/:id', questionsController.deleteQuestion);
+/**
+ * @swagger
+ * /api/questions/{id}/upload-diagram:
+ *   post:
+ *     summary: Create upload-diagram
+ *     tags: [Admin]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post(
   '/questions/:id/upload-diagram',
   uploadDiagramImage,
   questionsController.uploadQuestionDiagram
 );
+/**
+ * @swagger
+ * /api/questions/{id}/diagram:
+ *   delete:
+ *     summary: Delete diagram
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Deleted successfully
+ *       404:
+ *         description: Not found
+ *       500:
+ *         description: Server error
+ */
+
 router.delete('/questions/:id/diagram', questionsController.deleteQuestionDiagram);
+/**
+ * @swagger
+ * /api/questions/{id}/generate-diagram:
+ *   post:
+ *     summary: Create generate-diagram
+ *     tags: [Admin]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post('/questions/:id/generate-diagram', questionsController.generateQuestionDiagram);
+/**
+ * @swagger
+ * /api/questions/{id}/crop-diagram:
+ *   post:
+ *     summary: Create crop-diagram
+ *     tags: [Admin]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post('/questions/:id/crop-diagram', questionsController.cropQuestionDiagram);
+/**
+ * @swagger
+ * /api/questions/{id}/generate-explanation:
+ *   post:
+ *     summary: Create generate-explanation
+ *     tags: [Admin]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post('/questions/:id/generate-explanation', questionsController.generateExplanation);
+/**
+ * @swagger
+ * /api/questions/auto-generate-diagrams:
+ *   post:
+ *     summary: Create auto-generate-diagrams
+ *     tags: [Admin]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post('/questions/auto-generate-diagrams', questionsController.autoGenerateMissingDiagrams);
 
 // Question review/approval routes
+/**
+ * @swagger
+ * /api/questions/pending/count:
+ *   get:
+ *     summary: Retrieve count
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       500:
+ *         description: Server error
+ */
+
 router.get('/questions/pending/count', questionsController.getPendingCount);
+/**
+ * @swagger
+ * /api/questions/{id}/approve:
+ *   patch:
+ *     summary: Partially update approve
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       404:
+ *         description: Not found
+ *       500:
+ *         description: Server error
+ */
+
 router.patch('/questions/:id/approve', questionsController.approveQuestion);
+/**
+ * @swagger
+ * /api/questions/{id}/reject:
+ *   patch:
+ *     summary: Partially update reject
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       404:
+ *         description: Not found
+ *       500:
+ *         description: Server error
+ */
+
 router.patch('/questions/:id/reject', questionsController.rejectQuestion);
+/**
+ * @swagger
+ * /api/questions/bulk-approve:
+ *   post:
+ *     summary: Create bulk-approve
+ *     tags: [Admin]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post('/questions/bulk-approve', questionsController.bulkApproveQuestions);
 
 // ============================================================================
 // MOCK TESTS ROUTES
 // ============================================================================
 
+/**
+ * @swagger
+ * /api/mock-tests:
+ *   get:
+ *     summary: Retrieve mock-tests
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       500:
+ *         description: Server error
+ */
+
 router.get('/mock-tests', mockTestsController.getAllMockTests);
+/**
+ * @swagger
+ * /api/mock-tests/stats:
+ *   get:
+ *     summary: Retrieve stats
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       500:
+ *         description: Server error
+ */
+
 router.get('/mock-tests/stats', mockTestsController.getMockTestStats);
+/**
+ * @swagger
+ * /api/mock-tests/generate:
+ *   post:
+ *     summary: Create generate
+ *     tags: [Admin]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post('/mock-tests/generate', mockTestsController.generateMockTest);
+/**
+ * @swagger
+ * /api/mock-tests/{id}:
+ *   get:
+ *     summary: Retrieve mock-tests
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       500:
+ *         description: Server error
+ */
+
 router.get('/mock-tests/:id', mockTestsController.getMockTestById);
+/**
+ * @swagger
+ * /api/mock-tests:
+ *   post:
+ *     summary: Create mock-tests
+ *     tags: [Admin]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post('/mock-tests', mockTestsController.createMockTest);
+/**
+ * @swagger
+ * /api/mock-tests/{id}/questions:
+ *   post:
+ *     summary: Create questions
+ *     tags: [Admin]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post('/mock-tests/:id/questions', mockTestsController.addQuestionsToMockTest);
+/**
+ * @swagger
+ * /api/mock-tests/{id}/regenerate:
+ *   post:
+ *     summary: Create regenerate
+ *     tags: [Admin]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post('/mock-tests/:id/regenerate', mockTestsController.regenerateMockTestQuestions);
+/**
+ * @swagger
+ * /api/mock-tests/{id}/questions:
+ *   delete:
+ *     summary: Delete questions
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Deleted successfully
+ *       404:
+ *         description: Not found
+ *       500:
+ *         description: Server error
+ */
+
 router.delete('/mock-tests/:id/questions', mockTestsController.clearMockTestQuestions);
+/**
+ * @swagger
+ * /api/mock-tests/{id}:
+ *   put:
+ *     summary: Update mock-tests
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       404:
+ *         description: Not found
+ *       500:
+ *         description: Server error
+ */
+
 router.put('/mock-tests/:id', mockTestsController.updateMockTest);
+/**
+ * @swagger
+ * /api/mock-tests/{id}:
+ *   delete:
+ *     summary: Delete mock-tests
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Deleted successfully
+ *       404:
+ *         description: Not found
+ *       500:
+ *         description: Server error
+ */
+
 router.delete('/mock-tests/:id', mockTestsController.deleteMockTest);
+/**
+ * @swagger
+ * /api/mock-tests/{id}/publish:
+ *   post:
+ *     summary: Create publish
+ *     tags: [Admin]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post('/mock-tests/:id/publish', mockTestsController.publishMockTest);
 
 // ============================================================================
 // CONTACT MESSAGES ROUTES
 // ============================================================================
 
+/**
+ * @swagger
+ * /api/contact-messages:
+ *   get:
+ *     summary: Retrieve contact-messages
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       500:
+ *         description: Server error
+ */
+
 router.get('/contact-messages', contactController.getAllContactMessages);
+/**
+ * @swagger
+ * /api/contact-messages/{id}/read:
+ *   put:
+ *     summary: Update read
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       404:
+ *         description: Not found
+ *       500:
+ *         description: Server error
+ */
+
 router.put('/contact-messages/:id/read', contactController.markMessageAsRead);
+/**
+ * @swagger
+ * /api/contact-messages/{id}:
+ *   delete:
+ *     summary: Delete contact-messages
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Deleted successfully
+ *       404:
+ *         description: Not found
+ *       500:
+ *         description: Server error
+ */
+
 router.delete('/contact-messages/:id', contactController.deleteContactMessage);
 
 // ============================================================================
 // SUBJECTS ROUTES
 // ============================================================================
 
+/**
+ * @swagger
+ * /api/subjects:
+ *   get:
+ *     summary: Retrieve subjects
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       500:
+ *         description: Server error
+ */
+
 router.get('/subjects', subjectsController.getAllSubjects);
+/**
+ * @swagger
+ * /api/subjects/{id}:
+ *   get:
+ *     summary: Retrieve subjects
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       500:
+ *         description: Server error
+ */
+
 router.get('/subjects/:id', subjectsController.getSubjectById);
+/**
+ * @swagger
+ * /api/subjects:
+ *   post:
+ *     summary: Create subjects
+ *     tags: [Admin]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post('/subjects', subjectsController.createSubject);
+/**
+ * @swagger
+ * /api/subjects/{id}:
+ *   patch:
+ *     summary: Partially update subjects
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       404:
+ *         description: Not found
+ *       500:
+ *         description: Server error
+ */
+
 router.patch('/subjects/:id', subjectsController.updateSubject);
+/**
+ * @swagger
+ * /api/subjects/{id}:
+ *   delete:
+ *     summary: Delete subjects
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Deleted successfully
+ *       404:
+ *         description: Not found
+ *       500:
+ *         description: Server error
+ */
+
 router.delete('/subjects/:id', subjectsController.deleteSubject);
+/**
+ * @swagger
+ * /api/subjects/reorder:
+ *   put:
+ *     summary: Update reorder
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       404:
+ *         description: Not found
+ *       500:
+ *         description: Server error
+ */
+
 router.put('/subjects/reorder', subjectsController.reorderSubjects);
 
 // ============================================================================
@@ -96,32 +737,218 @@ router.put('/subjects/reorder', subjectsController.reorderSubjects);
 // ============================================================================
 
 // CRUD operations
+/**
+ * @swagger
+ * /api/curriculum-chapters:
+ *   get:
+ *     summary: Retrieve curriculum-chapters
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       500:
+ *         description: Server error
+ */
+
 router.get('/curriculum-chapters', curriculumChaptersController.getAllChapters);
+/**
+ * @swagger
+ * /api/curriculum-chapters/{id}:
+ *   get:
+ *     summary: Retrieve curriculum-chapters
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       500:
+ *         description: Server error
+ */
+
 router.get('/curriculum-chapters/:id', curriculumChaptersController.getChapterById);
+/**
+ * @swagger
+ * /api/curriculum-chapters:
+ *   post:
+ *     summary: Create curriculum-chapters
+ *     tags: [Admin]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post('/curriculum-chapters', curriculumChaptersController.createChapter);
+/**
+ * @swagger
+ * /api/curriculum-chapters/{id}:
+ *   patch:
+ *     summary: Partially update curriculum-chapters
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       404:
+ *         description: Not found
+ *       500:
+ *         description: Server error
+ */
+
 router.patch('/curriculum-chapters/:id', curriculumChaptersController.updateChapter);
+/**
+ * @swagger
+ * /api/curriculum-chapters/{id}:
+ *   delete:
+ *     summary: Delete curriculum-chapters
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Deleted successfully
+ *       404:
+ *         description: Not found
+ *       500:
+ *         description: Server error
+ */
+
 router.delete('/curriculum-chapters/:id', curriculumChaptersController.deleteChapter);
 
 // Question mapping
+/**
+ * @swagger
+ * /api/curriculum-chapters/{id}/questions:
+ *   get:
+ *     summary: Retrieve questions
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       500:
+ *         description: Server error
+ */
+
 router.get('/curriculum-chapters/:id/questions', curriculumChaptersController.getChapterQuestions);
+/**
+ * @swagger
+ * /api/curriculum-chapters/{id}/map-question:
+ *   post:
+ *     summary: Create map-question
+ *     tags: [Admin]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post(
   '/curriculum-chapters/:id/map-question',
   curriculumChaptersController.mapQuestionToChapter
 );
+/**
+ * @swagger
+ * /api/curriculum-chapters/{id}/unmap-question:
+ *   post:
+ *     summary: Create unmap-question
+ *     tags: [Admin]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post(
   '/curriculum-chapters/:id/unmap-question',
   curriculumChaptersController.unmapQuestionFromChapter
 );
+/**
+ * @swagger
+ * /api/curriculum-chapters/auto-map:
+ *   post:
+ *     summary: Create auto-map
+ *     tags: [Admin]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post('/curriculum-chapters/auto-map', curriculumChaptersController.autoMapQuestions);
+/**
+ * @swagger
+ * /api/curriculum-chapters/mapping/uncertain:
+ *   get:
+ *     summary: Retrieve uncertain
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       500:
+ *         description: Server error
+ */
+
 router.get(
   '/curriculum-chapters/mapping/uncertain',
   curriculumChaptersController.getUncertainMappings
 );
+/**
+ * @swagger
+ * /api/curriculum-chapters/mapping/report:
+ *   get:
+ *     summary: Retrieve report
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       500:
+ *         description: Server error
+ */
+
 router.get('/curriculum-chapters/mapping/report', curriculumChaptersController.getMappingReport);
 
 // Status management
+/**
+ * @swagger
+ * /api/curriculum-chapters/{id}/publish:
+ *   post:
+ *     summary: Create publish
+ *     tags: [Admin]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post('/curriculum-chapters/:id/publish', curriculumChaptersController.publishChapter);
+/**
+ * @swagger
+ * /api/curriculum-chapters/{id}/archive:
+ *   post:
+ *     summary: Create archive
+ *     tags: [Admin]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post('/curriculum-chapters/:id/archive', curriculumChaptersController.archiveChapter);
+/**
+ * @swagger
+ * /api/curriculum-chapters/{id}/refresh-stats:
+ *   post:
+ *     summary: Create refresh-stats
+ *     tags: [Admin]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post(
   '/curriculum-chapters/:id/refresh-stats',
   curriculumChaptersController.refreshChapterStats

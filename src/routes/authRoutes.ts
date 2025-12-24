@@ -69,6 +69,19 @@ const router = Router();
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
+/**
+ * @swagger
+ * /api/sign-up:
+ *   post:
+ *     summary: Create sign-up
+ *     tags: [Authentication]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post('/sign-up', signUp);
 
 /**
@@ -117,6 +130,19 @@ router.post('/sign-up', signUp);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
+/**
+ * @swagger
+ * /api/sign-in:
+ *   post:
+ *     summary: Create sign-in
+ *     tags: [Authentication]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post('/sign-in', signIn);
 
 /**
@@ -150,6 +176,24 @@ router.post('/sign-in', signIn);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
+/**
+ * @swagger
+ * /api/sign-out:
+ *   post:
+ *     summary: Create sign-out
+ *     tags: [Authentication]
+ *     security:
+ *       - studentAuth: []
+ *       - adminAuth: []
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       401:
+ *         description: Unauthorized - Authentication required
+ *       500:
+ *         description: Server error
+ */
+
 router.post('/sign-out', authenticate, signOut);
 
 /**
@@ -179,6 +223,24 @@ router.post('/sign-out', authenticate, signOut);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
+/**
+ * @swagger
+ * /api/session:
+ *   get:
+ *     summary: Retrieve session
+ *     tags: [Authentication]
+ *     security:
+ *       - studentAuth: []
+ *       - adminAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *       401:
+ *         description: Unauthorized - Authentication required
+ *       500:
+ *         description: Server error
+ */
+
 router.get('/session', authenticate, getSession);
 
 /**
@@ -205,6 +267,19 @@ router.get('/session', authenticate, getSession);
  *       200:
  *         description: Password reset email sent (always returns success for security)
  */
+/**
+ * @swagger
+ * /api/forgot-password:
+ *   post:
+ *     summary: Create forgot-password
+ *     tags: [Authentication]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post('/forgot-password', forgotPassword);
 
 /**
@@ -238,6 +313,19 @@ router.post('/forgot-password', forgotPassword);
  *       400:
  *         description: Invalid or expired token
  */
+/**
+ * @swagger
+ * /api/reset-password:
+ *   post:
+ *     summary: Create reset-password
+ *     tags: [Authentication]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post('/reset-password', resetPassword);
 
 /**
@@ -277,6 +365,24 @@ router.post('/reset-password', resetPassword);
  *       401:
  *         description: Unauthorized
  */
+/**
+ * @swagger
+ * /api/change-password:
+ *   post:
+ *     summary: Create change-password
+ *     tags: [Authentication]
+ *     security:
+ *       - studentAuth: []
+ *       - adminAuth: []
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       401:
+ *         description: Unauthorized - Authentication required
+ *       500:
+ *         description: Server error
+ */
+
 router.post('/change-password', authenticate, changePassword);
 
 export default router;

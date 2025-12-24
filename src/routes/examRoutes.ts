@@ -11,6 +11,19 @@ const router = Router();
  * Get all published papers
  * @route GET /api/exam/papers
  */
+/**
+ * @swagger
+ * /api/papers:
+ *   get:
+ *     summary: Retrieve papers
+ *     tags: [Exams]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       500:
+ *         description: Server error
+ */
+
 router.get('/papers', async (req, res) => {
   try {
     const publishedPapers = await db.select().from(papers).where(eq(papers.status, 'published'));
@@ -31,6 +44,24 @@ router.get('/papers', async (req, res) => {
  * Get paper with questions (authenticated students only)
  * @route GET /api/exam/papers/:id
  */
+/**
+ * @swagger
+ * /api/papers/{id}:
+ *   get:
+ *     summary: Retrieve papers
+ *     tags: [Exams]
+ *     security:
+ *       - studentAuth: []
+ *       - adminAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *       401:
+ *         description: Unauthorized - Authentication required
+ *       500:
+ *         description: Server error
+ */
+
 router.get('/papers/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
@@ -73,6 +104,19 @@ router.get('/papers/:id', authenticate, async (req, res) => {
  * Get all published mock tests
  * @route GET /api/exam/mock-tests
  */
+/**
+ * @swagger
+ * /api/mock-tests:
+ *   get:
+ *     summary: Retrieve mock-tests
+ *     tags: [Exams]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       500:
+ *         description: Server error
+ */
+
 router.get('/mock-tests', async (req, res) => {
   try {
     const publishedMockTests = await db
@@ -96,6 +140,24 @@ router.get('/mock-tests', async (req, res) => {
  * Get mock test with questions (authenticated students only)
  * @route GET /api/exam/mock-tests/:id
  */
+/**
+ * @swagger
+ * /api/mock-tests/{id}:
+ *   get:
+ *     summary: Retrieve mock-tests
+ *     tags: [Exams]
+ *     security:
+ *       - studentAuth: []
+ *       - adminAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *       401:
+ *         description: Unauthorized - Authentication required
+ *       500:
+ *         description: Server error
+ */
+
 router.get('/mock-tests/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;

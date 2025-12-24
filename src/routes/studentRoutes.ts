@@ -11,10 +11,75 @@ router.use(authenticate, requireStudent);
 // STUDENT EXAM ROUTES
 // ============================================================================
 
+/**
+ * @swagger
+ * /api/exams/start:
+ *   post:
+ *     summary: Create start
+ *     tags: [Student Exams]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post('/exams/start', studentExamsController.startExam);
+/**
+ * @swagger
+ * /api/exams/{examId}/answer:
+ *   post:
+ *     summary: Create answer
+ *     tags: [Student Exams]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post('/exams/:examId/answer', studentExamsController.submitAnswer);
+/**
+ * @swagger
+ * /api/exams/{examId}/submit:
+ *   post:
+ *     summary: Create submit
+ *     tags: [Student Exams]
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       500:
+ *         description: Server error
+ */
+
 router.post('/exams/:examId/submit', studentExamsController.submitExam);
+/**
+ * @swagger
+ * /api/exams/history:
+ *   get:
+ *     summary: Retrieve history
+ *     tags: [Student Exams]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       500:
+ *         description: Server error
+ */
+
 router.get('/exams/history', studentExamsController.getExamHistory);
+/**
+ * @swagger
+ * /api/exams/{examId}/result:
+ *   get:
+ *     summary: Retrieve result
+ *     tags: [Student Exams]
+ *     responses:
+ *       200:
+ *         description: Success
+ *       500:
+ *         description: Server error
+ */
+
 router.get('/exams/:examId/result', studentExamsController.getExamResult);
 
 export default router;

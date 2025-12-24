@@ -11,10 +11,46 @@ const router = Router();
 
 // Get chapters by subject and grade (requires authentication)
 // GET /api/chapters?subject=physics&grade=11
+/**
+ * @swagger
+ * /api/:
+ *   get:
+ *     summary: Retrieve chapters
+ *     tags: [Chapters]
+ *     security:
+ *       - studentAuth: []
+ *       - adminAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *       401:
+ *         description: Unauthorized - Authentication required
+ *       500:
+ *         description: Server error
+ */
+
 router.get('/', dualAuthenticate, getPublicChapters);
 
 // Get all active subjects (requires authentication)
 // GET /api/chapters/subjects
+/**
+ * @swagger
+ * /api/subjects:
+ *   get:
+ *     summary: Retrieve subjects
+ *     tags: [Chapters]
+ *     security:
+ *       - studentAuth: []
+ *       - adminAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *       401:
+ *         description: Unauthorized - Authentication required
+ *       500:
+ *         description: Server error
+ */
+
 router.get('/subjects', dualAuthenticate, getActiveSubjects);
 
 export default router;

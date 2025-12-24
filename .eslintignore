@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Scripts (plain JavaScript)
+scripts/
+
+# Drizzle migrations
+drizzle/
+
+# Environment files
+.env
+.env.*
+
+# Test coverage
+coverage/
