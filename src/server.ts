@@ -17,6 +17,9 @@ import contactRoutes from './routes/contactRoutes';
 import booksRoutes from './routes/booksRoutes';
 import subjectsRoutes from './routes/subjectsRoutes';
 import aiChatRoutes from './routes/aiChatRoutes';
+import chaptersRoutes from './routes/chaptersRoutes';
+import chapterTestsRoutes from './routes/chapterTestsRoutes';
+import yearTestsRoutes from './routes/yearTestsRoutes';
 import { BRANDING } from './config/branding';
 import { initializeFirebaseAdmin } from './config/firebase-admin';
 
@@ -127,6 +130,9 @@ app.use('/api/exam', examRoutes);
 app.use('/api/practice', practiceRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/subjects', subjectsRoutes); // Public subjects endpoint
+app.use('/api/chapters', chaptersRoutes); // Chapters endpoint (requires auth)
+app.use('/api/chapter-tests', chapterTestsRoutes); // Chapter tests endpoint (requires auth)
+app.use('/api/year-tests', yearTestsRoutes); // Year-wise full-length tests (requires auth)
 app.use('/api/ai-chat', aiChatRoutes); // AI chat endpoints (public + protected)
 
 // 404 handler
