@@ -25,7 +25,13 @@ import FormDataPolyfill from 'form-data';
 import sharp from 'sharp';
 import { ApiCostTracker } from '../utils/apiCostTracker';
 import { retryWithBackoff, isRetryableError } from '../utils/retry.util';
-import { getLocalFilePath, cleanupTempFile } from '../utils/fileStorage.util';
+import {
+  getLocalFilePath,
+  cleanupTempFile,
+  uploadFileToS3,
+  getS3Url,
+} from '../utils/fileStorage.util';
+import { shouldUseS3 } from '../config/s3';
 
 // Polyfill fetch and related APIs for Node.js when running with tsx
 if (typeof globalThis.fetch === 'undefined') {
@@ -1967,23 +1973,47 @@ Please confirm that you can see Question ${questionNumber} and its associated di
         const pageNumber = i + 1;
         const absolutePath = pageImages[i];
 
-        // Convert absolute path to relative URL path for serving via express.static
-        // Example: D:\...\backend\temp-vision\bookId\page-01.png -> /temp-vision/bookId/page-01.png
-        const backendDir = path.join(__dirname, '../..');
-        const relativePath = path.relative(backendDir, absolutePath);
-        const urlPath = '/' + relativePath.replace(/\\/g, '/'); // Convert Windows backslashes to forward slashes
+        let imageUrl: string;
+
+        // Upload to S3 in production, use local path in development
+        if (shouldUseS3()) {
+          // Upload page image to S3
+          const fileName = path.basename(absolutePath);
+          const s3Key = `page-images/${bookId}/${fileName}`;
+
+          console.log(`📤 Uploading page ${pageNumber} to S3: ${s3Key}`);
+          await uploadFileToS3(absolutePath, s3Key, 'image/png');
+
+          // Get S3 URL
+          imageUrl = getS3Url(s3Key);
+
+          // Clean up local temp file after upload
+          const fsSync = await import('fs');
+          if (fsSync.existsSync(absolutePath)) {
+            fsSync.unlinkSync(absolutePath);
+          }
+
+          console.log(`✅ Page ${pageNumber} uploaded to S3: ${imageUrl}`);
+        } else {
+          // Development: Convert absolute path to relative URL path for serving via express.static
+          // Example: D:\...\backend\temp-vision\bookId\page-01.png -> /temp-vision/bookId/page-01.png
+          const backendDir = path.join(__dirname, '../..');
+          const relativePath = path.relative(backendDir, absolutePath);
+          imageUrl = '/' + relativePath.replace(/\\/g, '/'); // Convert Windows backslashes to forward slashes
+
+          console.log(`📄 Page ${pageNumber}: ${path.basename(absolutePath)} -> ${imageUrl}`);
+        }
 
         await db.insert(pageExtractionResults).values({
           bookId,
           pageNumber,
-          pageImagePath: urlPath,
+          pageImagePath: imageUrl,
           status: 'pending',
           questionsExtracted: 0,
           retryCount: 0,
         });
 
         allPageNumbers.push(pageNumber);
-        console.log(`📄 Page ${pageNumber}: ${path.basename(absolutePath)} -> ${urlPath}`);
       }
 
       console.log(`✅ PDF split complete. ${pageImages.length} pages ready for processing.`);

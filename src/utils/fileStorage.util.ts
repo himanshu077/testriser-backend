@@ -1,4 +1,4 @@
-import { GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { GetObjectCommand, DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { s3Client, s3Config, shouldUseS3 } from '../config/s3';
 import fs from 'fs';
 import path from 'path';
@@ -37,7 +37,10 @@ export function getFileUrl(filePath: string): string {
  */
 export function isS3Path(filePath: string): boolean {
   return (
-    filePath.startsWith('http') || filePath.startsWith('books/') || filePath.startsWith('diagrams/')
+    filePath.startsWith('http') ||
+    filePath.startsWith('books/') ||
+    filePath.startsWith('diagrams/') ||
+    filePath.startsWith('page-images/')
   );
 }
 
@@ -122,6 +125,36 @@ export async function deleteFile(filePath: string): Promise<void> {
       fs.unlinkSync(filePath);
     }
   }
+}
+
+/**
+ * Upload a local file to S3
+ * Returns the S3 key
+ */
+export async function uploadFileToS3(
+  localFilePath: string,
+  s3Key: string,
+  contentType?: string
+): Promise<string> {
+  const fileContent = fs.readFileSync(localFilePath);
+
+  const command = new PutObjectCommand({
+    Bucket: s3Config.bucket,
+    Key: s3Key,
+    Body: fileContent,
+    ContentType: contentType,
+  });
+
+  await s3Client.send(command);
+
+  return s3Key;
+}
+
+/**
+ * Get S3 URL from S3 key
+ */
+export function getS3Url(s3Key: string): string {
+  return `https://${s3Config.bucket}.s3.${s3Config.region}.amazonaws.com/${s3Key}`;
 }
 
 /**
