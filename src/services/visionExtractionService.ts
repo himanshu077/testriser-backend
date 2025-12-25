@@ -25,6 +25,7 @@ import FormDataPolyfill from 'form-data';
 import sharp from 'sharp';
 import { ApiCostTracker } from '../utils/apiCostTracker';
 import { retryWithBackoff, isRetryableError } from '../utils/retry.util';
+import { getLocalFilePath, cleanupTempFile } from '../utils/fileStorage.util';
 
 // Polyfill fetch and related APIs for Node.js when running with tsx
 if (typeof globalThis.fetch === 'undefined') {
@@ -1948,9 +1949,15 @@ Please confirm that you can see Question ${questionNumber} and its associated di
         })
         .where(eq(books.id, bookId));
 
+      // Get local file path (downloads from S3 if needed)
+      const localFilePath = await getLocalFilePath(book.filePath);
+
       // Convert PDF to images with book-specific directory
       const service = new VisionExtractionService();
-      const pageImages = await service.convertPDFToImages(book.filePath, bookId);
+      const pageImages = await service.convertPDFToImages(localFilePath, bookId);
+
+      // Clean up temp file if it was downloaded from S3
+      cleanupTempFile(localFilePath);
 
       console.log(`✅ Generated ${pageImages.length} page image(s)`);
 
@@ -2040,10 +2047,16 @@ Please confirm that you can see Question ${questionNumber} and its associated di
       );
       console.log(`📄 File: ${book.filePath}`);
 
+      // Get local file path (downloads from S3 if needed)
+      const localFilePath = await getLocalFilePath(book.filePath);
+
       // Use Vision API extraction
       const service = new VisionExtractionService();
       service.currentBookId = bookId; // Set book ID for cost tracking
-      const questions = await service.extractPDF(book.filePath, bookId); // Pass bookId for progress tracking
+      const questions = await service.extractPDF(localFilePath, bookId); // Pass bookId for progress tracking
+
+      // Clean up temp file if it was downloaded from S3
+      cleanupTempFile(localFilePath);
 
       console.log(`✅ Extracted ${questions.length} questions`);
 

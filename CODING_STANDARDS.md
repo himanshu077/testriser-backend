@@ -1,6 +1,6 @@
 # Test Riser - Coding Standards & Best Practices
 
-**Last Updated**: 2025-12-24
+**Last Updated**: 2025-12-25
 **Purpose**: Authoritative reference for development standards based on actual codebase analysis
 
 > **IMPORTANT**: All standards in this document are based on ACTUAL code from the repository, with source citations. This is the single source of truth for development practices.
@@ -66,6 +66,8 @@ All versions verified from `backend/package.json` and `frontend/package.json`.
 | Technology | Version | Purpose | Source |
 |------------|---------|---------|--------|
 | **multer** | 2.0.2 | File upload middleware | `backend/package.json:41` |
+| **multer-s3** | Latest | S3 storage engine for multer | `backend/package.json` |
+| **@aws-sdk/client-s3** | 3.958.0 | AWS S3 SDK for file storage | `backend/package.json:48` |
 | **pdf-parse** | 1.1.1 | PDF text extraction | `backend/package.json:43` |
 | **pdf2pic** | 3.1.3 | PDF to image conversion | `backend/package.json:78` |
 | **sharp** | 0.34.5 | Image processing | `backend/package.json:48` |
@@ -1184,6 +1186,181 @@ export async function deleteQuestion(id: string) {
 
 ---
 
+## Cloud Storage & File Uploads
+
+### Rule 22A: Environment-Based Storage Strategy
+
+**CRITICAL**: Use local filesystem for development, S3 for production.
+
+**Configuration**:
+**Source**: `backend/src/config/s3.ts`
+
+```typescript
+import { S3Client } from '@aws-sdk/client-s3';
+
+export const s3Client = new S3Client({
+  region: process.env.AWS_REGION || 'ap-south-1',
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+  },
+});
+
+export const shouldUseS3 = (): boolean => {
+  return process.env.NODE_ENV === 'production';
+};
+```
+
+**Upload Middleware Pattern**:
+**Source**: `backend/src/middleware/upload.ts`
+
+```typescript
+import multer from 'multer';
+import multerS3 from 'multer-s3';
+import { s3Client, s3Config, shouldUseS3 } from '../config/s3';
+
+const storage = shouldUseS3()
+  ? multerS3({
+      s3: s3Client,
+      bucket: s3Config.bucket,
+      metadata: (req: any, file: any, cb: any) => {
+        cb(null, { fieldName: file.fieldname });
+      },
+      key: (req: any, file: any, cb: any) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        const ext = path.extname(file.originalname);
+        const nameWithoutExt = path.basename(file.originalname, ext);
+        cb(null, `books/${nameWithoutExt}-${uniqueSuffix}${ext}`);
+      },
+    })
+  : multer.diskStorage({
+      destination: (req, file, cb) => {
+        cb(null, uploadsDir);
+      },
+      filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        cb(null, `${file.originalname}-${uniqueSuffix}`);
+      },
+    });
+```
+
+**Benefits**:
+- Seamless local development (no AWS credentials needed)
+- Automatic S3 in production
+- Single codebase for both environments
+
+### Rule 22B: File Storage Abstraction
+
+**Pattern**: Use utility functions to abstract file operations across local and S3 storage.
+
+**File Storage Utilities**:
+**Source**: `backend/src/utils/fileStorage.util.ts`
+
+```typescript
+import { GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { s3Client, s3Config, shouldUseS3 } from '../config/s3';
+
+/**
+ * Get file path from multer upload
+ * Works for both local and S3 uploads
+ */
+export function getUploadedFilePath(file: Express.Multer.File): string {
+  if (shouldUseS3()) {
+    return (file as any).key || (file as any).location || file.path;
+  }
+  return file.path;
+}
+
+/**
+ * Get local file path for processing
+ * Downloads from S3 if needed
+ */
+export async function getLocalFilePath(filePath: string): Promise<string> {
+  if (isS3Path(filePath)) {
+    return await downloadS3File(filePath);
+  }
+  return filePath;
+}
+
+/**
+ * Delete file from local filesystem or S3
+ */
+export async function deleteFile(filePath: string): Promise<void> {
+  if (isS3Path(filePath)) {
+    const command = new DeleteObjectCommand({
+      Bucket: s3Config.bucket,
+      Key: extractS3Key(filePath),
+    });
+    await s3Client.send(command);
+  } else {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  }
+}
+```
+
+**Usage in Controllers**:
+```typescript
+import { getUploadedFilePath, getLocalFilePath, deleteFile } from '../utils/fileStorage.util';
+
+export async function uploadBook(req: Request, res: Response) {
+  try {
+    // Get file path (works for both local and S3)
+    const uploadedFilePath = getUploadedFilePath(req.file);
+
+    // Get local path for processing (downloads from S3 if needed)
+    const localFilePath = await getLocalFilePath(uploadedFilePath);
+
+    // Process file...
+    const result = await processFile(localFilePath);
+
+    // Store the uploaded path in database
+    await db.insert(books).values({
+      filePath: uploadedFilePath, // Can be local path or S3 key
+    });
+
+    // Clean up temp file if downloaded from S3
+    cleanupTempFile(localFilePath);
+  } catch (error) {
+    // Clean up on error
+    if (req.file) {
+      await deleteFile(getUploadedFilePath(req.file));
+    }
+  }
+}
+```
+
+**Requirements**:
+1. ✅ Always use `getUploadedFilePath()` instead of `req.file.path`
+2. ✅ Use `getLocalFilePath()` when processing files
+3. ✅ Use `deleteFile()` for cleanup (handles both local and S3)
+4. ✅ Clean up temp files after processing
+5. ✅ Store S3 URLs/keys in database, not local paths in production
+
+### Rule 22C: S3 File Organization
+
+**Pattern**: Organize files in S3 buckets with clear folder structure.
+
+**Standard S3 Structure**:
+```
+s3://bucket-name/
+├── books/
+│   └── book-name-timestamp-random.pdf
+├── diagrams/
+│   └── diagram-timestamp-random.png
+└── temp-uploads/
+    └── test-files (auto-deleted)
+```
+
+**Naming Convention**:
+- Books: `books/{originalname}-{timestamp}-{random}.pdf`
+- Diagrams: `diagrams/diagram-{timestamp}-{random}.{ext}`
+- Always include timestamp for uniqueness
+- Always include random suffix to prevent collisions
+
+---
+
 ## File Organization
 
 ### Rule 23: Backend Directory Structure
@@ -1195,6 +1372,7 @@ backend/src/
 ├── config/
 │   ├── database.ts           # Database connection
 │   ├── firebase-admin.ts     # Firebase initialization
+│   ├── s3.ts                 # AWS S3 configuration
 │   ├── constants.ts          # App-wide constants
 │   ├── swagger.ts            # API documentation
 │   └── branding.ts           # App branding
@@ -1234,6 +1412,8 @@ backend/src/
 ├── utils/                    # Helper functions
 │   ├── jwt.util.ts
 │   ├── password.util.ts
+│   ├── fileStorage.util.ts   # S3/local file operations
+│   ├── fileHash.util.ts
 │   ├── response.util.ts
 │   ├── validation.util.ts
 │   └── mailer.ts
@@ -1791,6 +1971,12 @@ FIREBASE_CLIENT_EMAIL=your-client-email
 ANTHROPIC_API_KEY=your-anthropic-key
 OPENAI_API_KEY=your-openai-key
 GOOGLE_GENERATIVE_AI_KEY=your-google-key
+
+# AWS S3 (File Storage - Production Only)
+AWS_ACCESS_KEY_ID=your-access-key-id
+AWS_SECRET_ACCESS_KEY=your-secret-access-key
+AWS_REGION=ap-south-1
+AWS_S3_BUCKET=your-bucket-name
 
 # Server
 PORT=8888
@@ -2449,7 +2635,7 @@ const { data: liveScore } = useQuery({
 
 ## Document Maintenance
 
-**Last Verified**: 2025-12-24
+**Last Verified**: 2025-12-25
 **Verification Method**: Direct codebase analysis with source citations
 **Update Frequency**: After major architecture changes or new patterns emerge
 

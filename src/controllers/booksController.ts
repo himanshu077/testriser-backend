@@ -5,6 +5,12 @@ import { eq, desc, and, count } from 'drizzle-orm';
 import { HTTP_STATUS } from '../config/constants';
 import { VisionExtractionService } from '../services/visionExtractionService';
 import { calculateFileHash } from '../utils/fileHash.util';
+import {
+  getUploadedFilePath,
+  getLocalFilePath,
+  deleteFile,
+  cleanupTempFile,
+} from '../utils/fileStorage.util';
 import fs from 'fs';
 import path from 'path';
 
@@ -31,10 +37,17 @@ export async function uploadBook(req: Request, res: Response) {
       });
     }
 
+    // Get file path (works for both local and S3 uploads)
+    const uploadedFilePath = getUploadedFilePath(req.file);
+
+    // Get local file path for processing (downloads from S3 if needed)
+    console.log('📥 Preparing file for processing...');
+    const localFilePath = await getLocalFilePath(uploadedFilePath);
+
     // Use AI to detect ALL metadata from first page (no manual input needed)
     console.log('🤖 Detecting exam metadata with AI...');
     const { examName, examYear, title, description, pyqType, subject } =
-      await VisionExtractionService.detectExamInfo(req.file.path);
+      await VisionExtractionService.detectExamInfo(localFilePath);
 
     console.log(`✅ AI Detection Results:`);
     console.log(`   Exam: ${examName || 'Unknown'} ${examYear || 'Unknown Year'}`);
@@ -49,7 +62,10 @@ export async function uploadBook(req: Request, res: Response) {
 
     // Calculate file hash for additional duplicate detection
     console.log('📋 Calculating file hash...');
-    const fileHash = await calculateFileHash(req.file.path);
+    const fileHash = await calculateFileHash(localFilePath);
+
+    // Clean up temp file if it was downloaded from S3
+    cleanupTempFile(localFilePath);
 
     // Check for duplicate by exam name + year (smarter duplicate detection)
     let existingBook = null;
@@ -78,10 +94,8 @@ export async function uploadBook(req: Request, res: Response) {
     }
 
     if (existingBook) {
-      // Delete the uploaded duplicate file
-      if (fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
+      // Delete the uploaded duplicate file (works for both local and S3)
+      await deleteFile(uploadedFilePath);
 
       // Return 409 Conflict with details about existing book
       return res.status(409).json({
@@ -122,7 +136,7 @@ export async function uploadBook(req: Request, res: Response) {
         title: finalTitle,
         description: finalDescription,
         filename: req.file.originalname,
-        filePath: req.file.path,
+        filePath: uploadedFilePath, // Can be local path or S3 key/URL
         fileSize: req.file.size,
         fileHash: fileHash,
         examName: examName, // AI-detected
