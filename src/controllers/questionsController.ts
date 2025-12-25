@@ -10,7 +10,10 @@ import {
   getLocalFilePath,
   deleteFile,
   cleanupTempFile,
+  uploadFileToS3,
+  getS3Url,
 } from '../utils/fileStorage.util';
+import { shouldUseS3 } from '../config/s3';
 import fs from 'fs';
 import path from 'path';
 
@@ -605,22 +608,56 @@ export async function uploadQuestionDiagram(req: Request, res: Response) {
     // Delete old diagram if exists
     if (question.questionImage) {
       try {
-        // For local files, questionImage is like "/uploads/diagram-images/filename.png"
-        // For S3 files, it could be the S3 URL or key
-        const oldImagePath = question.questionImage.startsWith('/')
-          ? `${process.cwd()}${question.questionImage}`
-          : question.questionImage;
-        await deleteFile(oldImagePath);
+        await deleteFile(question.questionImage);
       } catch {
         // Ignore delete errors (file might not exist)
       }
     }
 
-    // Get uploaded file path and prepare image URL
-    const uploadedFilePath = getUploadedFilePath(file);
-    const imageUrl = uploadedFilePath.startsWith('diagrams/')
-      ? uploadedFilePath // S3 key
-      : `/uploads/diagram-images/${file.filename}`; // Local path
+    // Handle file upload - memory storage requires manual handling
+    let imageUrl: string;
+    const ext = path.extname(file.originalname);
+    const timestamp = Date.now();
+
+    if (shouldUseS3()) {
+      // Production: Upload to S3 with questionId in path
+      const s3Key = `diagrams/${id}/diagram-${timestamp}${ext}`;
+
+      // Write buffer to temp file first
+      const tempPath = path.join(process.cwd(), 'temp-uploads', `${id}-${timestamp}${ext}`);
+      const tempDir = path.dirname(tempPath);
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+      fs.writeFileSync(tempPath, file.buffer);
+
+      // Upload to S3
+      await uploadFileToS3(tempPath, s3Key, file.mimetype);
+
+      // Get S3 URL
+      imageUrl = getS3Url(s3Key);
+
+      // Clean up temp file
+      fs.unlinkSync(tempPath);
+
+      console.log(`✅ Diagram uploaded to S3: ${imageUrl}`);
+    } else {
+      // Development: Save to local filesystem
+      const fileName = `diagram-${timestamp}${ext}`;
+      const localPath = path.join(process.cwd(), 'uploads', 'diagram-images', fileName);
+
+      // Ensure directory exists
+      const dir = path.dirname(localPath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+
+      // Write buffer to file
+      fs.writeFileSync(localPath, file.buffer);
+      imageUrl = `/uploads/diagram-images/${fileName}`;
+
+      console.log(`✅ Diagram saved locally: ${imageUrl}`);
+    }
 
     const [updatedQuestion] = await db
       .update(questions)
