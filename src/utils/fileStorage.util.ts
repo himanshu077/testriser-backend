@@ -143,6 +143,7 @@ export async function uploadFileToS3(
     Key: s3Key,
     Body: fileContent,
     ContentType: contentType,
+    ACL: 'public-read', // Make object publicly accessible
   });
 
   await s3Client.send(command);

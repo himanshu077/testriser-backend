@@ -22,6 +22,7 @@ const storage = shouldUseS3()
   ? multerS3({
       s3: s3Client,
       bucket: s3Config.bucket,
+      acl: 'public-read', // Make uploaded files publicly accessible
       metadata: (req: any, file: any, cb: any) => {
         cb(null, { fieldName: file.fieldname });
       },
