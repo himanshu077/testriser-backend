@@ -69,6 +69,7 @@ const router = Router();
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
+
 router.post('/sign-up', signUp);
 
 /**
@@ -117,6 +118,7 @@ router.post('/sign-up', signUp);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
+
 router.post('/sign-in', signIn);
 
 /**
@@ -150,6 +152,7 @@ router.post('/sign-in', signIn);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
+
 router.post('/sign-out', authenticate, signOut);
 
 /**
@@ -179,6 +182,7 @@ router.post('/sign-out', authenticate, signOut);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
+
 router.get('/session', authenticate, getSession);
 
 /**
@@ -205,6 +209,7 @@ router.get('/session', authenticate, getSession);
  *       200:
  *         description: Password reset email sent (always returns success for security)
  */
+
 router.post('/forgot-password', forgotPassword);
 
 /**
@@ -238,6 +243,7 @@ router.post('/forgot-password', forgotPassword);
  *       400:
  *         description: Invalid or expired token
  */
+
 router.post('/reset-password', resetPassword);
 
 /**
@@ -277,6 +283,7 @@ router.post('/reset-password', resetPassword);
  *       401:
  *         description: Unauthorized
  */
+
 router.post('/change-password', authenticate, changePassword);
 
 export default router;

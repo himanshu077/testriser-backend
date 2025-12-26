@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import * as aiChatController from '../controllers/aiChatController';
 import * as publicChaptersController from '../controllers/publicChaptersController';
-import { authenticate } from '../middleware/authMiddleware';
+import { dualAuthenticate } from '../middleware/dualAuthMiddleware';
 import { aiRateLimiter } from '../middleware/aiRateLimiter';
 
 const router = Router();
@@ -14,30 +14,120 @@ const router = Router();
  * Get chapters filtered by subject and grade
  * Used by AI bot page for chapter selection (requires login)
  */
-router.get('/chapters', authenticate, publicChaptersController.getPublicChapters);
+/**
+ * @swagger
+ * /api/ai-chat/chapters:
+ *   get:
+ *     summary: Retrieve chapters
+ *     tags: [AI Chat]
+ *     security:
+ *       - studentAuth: []
+ *       - adminAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *       401:
+ *         description: Unauthorized - Authentication required
+ *       500:
+ *         description: Server error
+ */
+
+router.get('/chapters', dualAuthenticate, publicChaptersController.getPublicChapters);
 
 /**
  * Get active subjects
  * Used by AI bot page for subject selection (requires login)
  */
-router.get('/subjects', authenticate, publicChaptersController.getActiveSubjects);
+/**
+ * @swagger
+ * /api/ai-chat/subjects:
+ *   get:
+ *     summary: Retrieve subjects
+ *     tags: [AI Chat]
+ *     security:
+ *       - studentAuth: []
+ *       - adminAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *       401:
+ *         description: Unauthorized - Authentication required
+ *       500:
+ *         description: Server error
+ */
+
+router.get('/subjects', dualAuthenticate, publicChaptersController.getActiveSubjects);
 
 /**
  * Get or create chat session for authenticated user
  */
-router.post('/session', authenticate, aiChatController.getChatSession);
+/**
+ * @swagger
+ * /api/ai-chat/session:
+ *   post:
+ *     summary: Create session
+ *     tags: [AI Chat]
+ *     security:
+ *       - studentAuth: []
+ *       - adminAuth: []
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       401:
+ *         description: Unauthorized - Authentication required
+ *       500:
+ *         description: Server error
+ */
+
+router.post('/session', dualAuthenticate, aiChatController.getChatSession);
 
 /**
  * Get chat history for a specific session
  */
-router.get('/session/:sessionId', authenticate, aiChatController.getChatHistory);
+/**
+ * @swagger
+ * /api/ai-chat/session/{sessionId}:
+ *   get:
+ *     summary: Retrieve session
+ *     tags: [AI Chat]
+ *     security:
+ *       - studentAuth: []
+ *       - adminAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *       401:
+ *         description: Unauthorized - Authentication required
+ *       500:
+ *         description: Server error
+ */
+
+router.get('/session/:sessionId', dualAuthenticate, aiChatController.getChatHistory);
 
 /**
  * Send message and get AI response (with rate limiting)
  */
+/**
+ * @swagger
+ * /api/ai-chat/message:
+ *   post:
+ *     summary: Create message
+ *     tags: [AI Chat]
+ *     security:
+ *       - studentAuth: []
+ *       - adminAuth: []
+ *     responses:
+ *       201:
+ *         description: Created successfully
+ *       401:
+ *         description: Unauthorized - Authentication required
+ *       500:
+ *         description: Server error
+ */
+
 router.post(
   '/message',
-  authenticate,
+  dualAuthenticate,
   aiRateLimiter, // Check tier-based daily limits
   aiChatController.sendMessage
 );
@@ -45,26 +135,118 @@ router.post(
 /**
  * Clear chat history for a session
  */
-router.delete('/session/:sessionId', authenticate, aiChatController.clearChatSession);
+/**
+ * @swagger
+ * /api/ai-chat/session/{sessionId}:
+ *   delete:
+ *     summary: Delete session
+ *     tags: [AI Chat]
+ *     security:
+ *       - studentAuth: []
+ *       - adminAuth: []
+ *     responses:
+ *       200:
+ *         description: Deleted successfully
+ *       401:
+ *         description: Unauthorized - Authentication required
+ *       404:
+ *         description: Not found
+ *       500:
+ *         description: Server error
+ */
+
+router.delete('/session/:sessionId', dualAuthenticate, aiChatController.clearChatSession);
 
 /**
  * Get all sessions for authenticated user
  */
-router.get('/my-sessions', authenticate, aiChatController.getUserSessions);
+/**
+ * @swagger
+ * /api/ai-chat/my-sessions:
+ *   get:
+ *     summary: Retrieve my-sessions
+ *     tags: [AI Chat]
+ *     security:
+ *       - studentAuth: []
+ *       - adminAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *       401:
+ *         description: Unauthorized - Authentication required
+ *       500:
+ *         description: Server error
+ */
+
+router.get('/my-sessions', dualAuthenticate, aiChatController.getUserSessions);
 
 /**
  * Get daily usage stats for authenticated user
  */
-router.get('/usage', authenticate, aiChatController.getDailyUsage);
+/**
+ * @swagger
+ * /api/ai-chat/usage:
+ *   get:
+ *     summary: Retrieve usage
+ *     tags: [AI Chat]
+ *     security:
+ *       - studentAuth: []
+ *       - adminAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *       401:
+ *         description: Unauthorized - Authentication required
+ *       500:
+ *         description: Server error
+ */
+
+router.get('/usage', dualAuthenticate, aiChatController.getDailyUsage);
 
 /**
  * Get recent questions asked by user for quick access
  */
-router.get('/recent-questions', authenticate, aiChatController.getRecentQuestions);
+/**
+ * @swagger
+ * /api/ai-chat/recent-questions:
+ *   get:
+ *     summary: Retrieve recent-questions
+ *     tags: [AI Chat]
+ *     security:
+ *       - studentAuth: []
+ *       - adminAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *       401:
+ *         description: Unauthorized - Authentication required
+ *       500:
+ *         description: Server error
+ */
+
+router.get('/recent-questions', dualAuthenticate, aiChatController.getRecentQuestions);
 
 /**
  * Get message counts for user's chat sessions
  */
-router.get('/message-counts', authenticate, aiChatController.getMessageCounts);
+/**
+ * @swagger
+ * /api/ai-chat/message-counts:
+ *   get:
+ *     summary: Retrieve message-counts
+ *     tags: [AI Chat]
+ *     security:
+ *       - studentAuth: []
+ *       - adminAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *       401:
+ *         description: Unauthorized - Authentication required
+ *       500:
+ *         description: Server error
+ */
+
+router.get('/message-counts', dualAuthenticate, aiChatController.getMessageCounts);
 
 export default router;

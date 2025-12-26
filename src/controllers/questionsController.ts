@@ -5,6 +5,15 @@ import { eq, and, desc, asc, isNotNull, isNull, sql } from 'drizzle-orm';
 import { HTTP_STATUS } from '../config/constants';
 import { PDFParserService } from '../services/pdfParserService';
 import { VisionExtractionService } from '../services/visionExtractionService';
+import {
+  getUploadedFilePath,
+  getLocalFilePath,
+  deleteFile,
+  cleanupTempFile,
+  uploadFileToS3,
+  getS3Url,
+} from '../utils/fileStorage.util';
+import { shouldUseS3 } from '../config/s3';
 import fs from 'fs';
 import path from 'path';
 
@@ -461,9 +470,8 @@ export async function uploadPDFQuestions(req: Request, res: Response) {
     const { subject, topic, paperId, useAI } = req.body;
     if (!subject) {
       // Clean up uploaded file
-      if (fs.existsSync(file.path)) {
-        fs.unlinkSync(file.path);
-      }
+      const uploadedFilePath = getUploadedFilePath(file);
+      await deleteFile(uploadedFilePath);
       return res.status(HTTP_STATUS.BAD_REQUEST).json({
         error: 'Subject is required',
       });
@@ -474,8 +482,12 @@ export async function uploadPDFQuestions(req: Request, res: Response) {
     console.log('📚 Subject:', subject);
     console.log('🤖 AI Enhancement:', enableAI ? 'ENABLED' : 'DISABLED');
 
+    // Get file path (works for both local and S3 uploads)
+    const uploadedFilePath = getUploadedFilePath(file);
+    const localFilePath = await getLocalFilePath(uploadedFilePath);
+
     // Parse PDF
-    const pdfText = await PDFParserService.parsePDF(file.path);
+    const pdfText = await PDFParserService.parsePDF(localFilePath);
     console.log('✅ PDF parsed, text length:', pdfText.length);
 
     // Extract questions from PDF
@@ -537,10 +549,9 @@ export async function uploadPDFQuestions(req: Request, res: Response) {
       savedQuestions.push(savedQuestion);
     }
 
-    // Clean up uploaded file
-    if (fs.existsSync(file.path)) {
-      fs.unlinkSync(file.path);
-    }
+    // Clean up uploaded file and temp file
+    await deleteFile(uploadedFilePath);
+    cleanupTempFile(localFilePath);
 
     res.status(HTTP_STATUS.CREATED).json({
       success: true,
@@ -555,8 +566,9 @@ export async function uploadPDFQuestions(req: Request, res: Response) {
 
     // Clean up file on error
     const file = req.file;
-    if (file && fs.existsSync(file.path)) {
-      fs.unlinkSync(file.path);
+    if (file) {
+      const uploadedFilePath = getUploadedFilePath(file);
+      await deleteFile(uploadedFilePath);
     }
 
     res.status(HTTP_STATUS.SERVER_ERROR).json({
@@ -586,9 +598,8 @@ export async function uploadQuestionDiagram(req: Request, res: Response) {
 
     if (!question) {
       // Clean up uploaded file
-      if (fs.existsSync(file.path)) {
-        fs.unlinkSync(file.path);
-      }
+      const uploadedFilePath = getUploadedFilePath(file);
+      await deleteFile(uploadedFilePath);
       return res.status(HTTP_STATUS.NOT_FOUND).json({
         error: 'Question not found',
       });
@@ -596,18 +607,57 @@ export async function uploadQuestionDiagram(req: Request, res: Response) {
 
     // Delete old diagram if exists
     if (question.questionImage) {
-      const oldImagePath = `${process.cwd()}${question.questionImage}`;
-      if (fs.existsSync(oldImagePath)) {
-        try {
-          fs.unlinkSync(oldImagePath);
-        } catch {
-          // Ignore delete errors
-        }
+      try {
+        await deleteFile(question.questionImage);
+      } catch {
+        // Ignore delete errors (file might not exist)
       }
     }
 
-    // Update question with new diagram URL
-    const imageUrl = `/uploads/diagram-images/${file.filename}`;
+    // Handle file upload - memory storage requires manual handling
+    let imageUrl: string;
+    const ext = path.extname(file.originalname);
+    const timestamp = Date.now();
+
+    if (shouldUseS3()) {
+      // Production: Upload to S3 with questionId in path
+      const s3Key = `diagrams/${id}/diagram-${timestamp}${ext}`;
+
+      // Write buffer to temp file first
+      const tempPath = path.join(process.cwd(), 'temp-uploads', `${id}-${timestamp}${ext}`);
+      const tempDir = path.dirname(tempPath);
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+      fs.writeFileSync(tempPath, file.buffer);
+
+      // Upload to S3
+      await uploadFileToS3(tempPath, s3Key, file.mimetype);
+
+      // Get S3 URL
+      imageUrl = getS3Url(s3Key);
+
+      // Clean up temp file
+      fs.unlinkSync(tempPath);
+
+      console.log(`✅ Diagram uploaded to S3: ${imageUrl}`);
+    } else {
+      // Development: Save to local filesystem
+      const fileName = `diagram-${timestamp}${ext}`;
+      const localPath = path.join(process.cwd(), 'uploads', 'diagram-images', fileName);
+
+      // Ensure directory exists
+      const dir = path.dirname(localPath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+
+      // Write buffer to file
+      fs.writeFileSync(localPath, file.buffer);
+      imageUrl = `/uploads/diagram-images/${fileName}`;
+
+      console.log(`✅ Diagram saved locally: ${imageUrl}`);
+    }
 
     const [updatedQuestion] = await db
       .update(questions)
@@ -632,8 +682,9 @@ export async function uploadQuestionDiagram(req: Request, res: Response) {
 
     // Clean up file on error
     const file = req.file;
-    if (file && fs.existsSync(file.path)) {
-      fs.unlinkSync(file.path);
+    if (file) {
+      const uploadedFilePath = getUploadedFilePath(file);
+      await deleteFile(uploadedFilePath);
     }
 
     res.status(HTTP_STATUS.SERVER_ERROR).json({

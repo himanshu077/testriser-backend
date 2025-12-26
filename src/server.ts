@@ -17,7 +17,11 @@ import contactRoutes from './routes/contactRoutes';
 import booksRoutes from './routes/booksRoutes';
 import subjectsRoutes from './routes/subjectsRoutes';
 import aiChatRoutes from './routes/aiChatRoutes';
+import chaptersRoutes from './routes/chaptersRoutes';
+import chapterTestsRoutes from './routes/chapterTestsRoutes';
+import yearTestsRoutes from './routes/yearTestsRoutes';
 import { BRANDING } from './config/branding';
+import { initializeFirebaseAdmin } from './config/firebase-admin';
 
 // Version: 1.0.6 - Database health check and smart migrations
 // Deployment: 2025-01-14 - RDS database setup with auto-verification
@@ -126,6 +130,9 @@ app.use('/api/exam', examRoutes);
 app.use('/api/practice', practiceRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/subjects', subjectsRoutes); // Public subjects endpoint
+app.use('/api/chapters', chaptersRoutes); // Chapters endpoint (requires auth)
+app.use('/api/chapter-tests', chapterTestsRoutes); // Chapter tests endpoint (requires auth)
+app.use('/api/year-tests', yearTestsRoutes); // Year-wise full-length tests (requires auth)
 app.use('/api/ai-chat', aiChatRoutes); // AI chat endpoints (public + protected)
 
 // 404 handler
@@ -145,15 +152,23 @@ app.use((err: Error, req: Request, res: Response, _next: any) => {
   });
 });
 
+// Initialize Firebase Admin SDK
+try {
+  initializeFirebaseAdmin();
+} catch {
+  console.log('⚠️  Firebase Admin not initialized - student Firebase auth will not work');
+  console.log('   (Admin JWT auth will still work)');
+}
+
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔐 JWT Authentication: Enabled`);
+  console.log(`🔐 Dual Authentication: JWT (Admin) + Firebase (Student)`);
   console.log(`📚 API Docs: http://localhost:${PORT}/api-docs`);
   console.log(`🌐 CORS Allowed Origins: ${allowedOrigins.join(', ')}`);
   console.log(`\n✅ Available Routes:`);
-  console.log(`   POST /api/auth/sign-in      - Login (Active)`);
+  console.log(`   POST /api/auth/sign-in      - Login (Active - JWT)`);
   console.log(`   GET  /api/auth/session      - Get current session (Active)`);
   console.log(`   POST /api/auth/sign-out     - Logout (Active)`);
   console.log(`   POST /api/auth/sign-up      - Register new student (Active)`);
@@ -161,7 +176,9 @@ app.listen(PORT, () => {
   console.log(`   POST /api/admin/books/upload - Upload PDF book for question extraction`);
   console.log(`   GET  /api/admin/books       - List all books with status`);
   console.log(`   POST /api/admin/questions/upload-pdf - Upload PDF to extract questions directly`);
-  console.log(`   GET  /api/student/*         - Student routes (requires student role)`);
+  console.log(
+    `   GET  /api/student/*         - Student routes (requires student role - Firebase or JWT)`
+  );
   console.log(`   GET  /api/exam/*            - Exam routes (papers, mock tests)`);
   console.log(`   GET  /api/practice/*        - Practice routes (questionwise)`);
   console.log(`   POST /api/contact           - Contact form submission`);

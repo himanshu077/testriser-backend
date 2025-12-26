@@ -58,6 +58,25 @@ const router = Router();
  *       403:
  *         description: Forbidden - Admin access required
  */
+/**
+ * @swagger
+ * /api/:
+ *   get:
+ *     summary: Retrieve students
+ *     tags: [Students]
+ *     security:
+ *       - adminAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *       401:
+ *         description: Unauthorized - Authentication required
+ *       403:
+ *         description: Forbidden - Insufficient permissions
+ *       500:
+ *         description: Server error
+ */
+
 router.get('/', authenticate, requireAdmin, getAllStudents);
 
 /**
@@ -86,6 +105,25 @@ router.get('/', authenticate, requireAdmin, getAllStudents);
  *       403:
  *         description: Forbidden - Admin access required
  */
+/**
+ * @swagger
+ * /api/students/{id}:
+ *   get:
+ *     summary: Retrieve students
+ *     tags: [Students]
+ *     security:
+ *       - adminAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *       401:
+ *         description: Unauthorized - Authentication required
+ *       403:
+ *         description: Forbidden - Insufficient permissions
+ *       500:
+ *         description: Server error
+ */
+
 router.get('/:id', authenticate, requireAdmin, getStudentById);
 
 export default router;

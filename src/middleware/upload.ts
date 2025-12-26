@@ -1,31 +1,51 @@
 import multer from 'multer';
+import multerS3 from 'multer-s3';
 import path from 'path';
 import fs from 'fs';
+import { s3Client, s3Config, shouldUseS3 } from '../config/s3';
 
-// Ensure uploads directories exist
+// Ensure uploads directories exist (for local development)
 const uploadsDir = path.join(process.cwd(), 'uploads', 'books');
 const diagramsDir = path.join(process.cwd(), 'uploads', 'diagram-images');
 
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
-if (!fs.existsSync(diagramsDir)) {
-  fs.mkdirSync(diagramsDir, { recursive: true });
+if (!shouldUseS3()) {
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+  if (!fs.existsSync(diagramsDir)) {
+    fs.mkdirSync(diagramsDir, { recursive: true });
+  }
 }
 
-// Configure multer storage
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadsDir);
-  },
-  filename: (req, file, cb) => {
-    // Generate unique filename: timestamp-originalname
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname);
-    const nameWithoutExt = path.basename(file.originalname, ext);
-    cb(null, `${nameWithoutExt}-${uniqueSuffix}${ext}`);
-  },
-});
+// Configure multer storage (S3 for production, local for development)
+const storage = shouldUseS3()
+  ? multerS3({
+      s3: s3Client,
+      bucket: s3Config.bucket,
+      acl: 'public-read', // Make uploaded files publicly accessible
+      metadata: (req: any, file: any, cb: any) => {
+        cb(null, { fieldName: file.fieldname });
+      },
+      key: (req: any, file: any, cb: any) => {
+        // Generate unique filename: books/originalname-timestamp.ext
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        const ext = path.extname(file.originalname);
+        const nameWithoutExt = path.basename(file.originalname, ext);
+        cb(null, `books/${nameWithoutExt}-${uniqueSuffix}${ext}`);
+      },
+    })
+  : multer.diskStorage({
+      destination: (req, file, cb) => {
+        cb(null, uploadsDir);
+      },
+      filename: (req, file, cb) => {
+        // Generate unique filename: timestamp-originalname
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        const ext = path.extname(file.originalname);
+        const nameWithoutExt = path.basename(file.originalname, ext);
+        cb(null, `${nameWithoutExt}-${uniqueSuffix}${ext}`);
+      },
+    });
 
 // File filter to only allow PDF files
 const fileFilter = (
@@ -53,16 +73,8 @@ export const upload = multer({
 export const uploadPDFBook = upload.single('pdfFile');
 
 // Configure multer storage for diagram images
-const diagramStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, diagramsDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname);
-    cb(null, `diagram-${uniqueSuffix}${ext}`);
-  },
-});
+// Use memory storage - we'll upload to S3 in the controller with question ID in path
+const diagramStorage = multer.memoryStorage();
 
 // File filter for images
 const imageFilter = (
