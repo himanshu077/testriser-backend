@@ -1,8 +1,111 @@
 import fs from 'fs';
 import { db } from '../config/database';
-import { books, questions } from '../models/schema';
+import { books, questions, curriculumChapters, subjects } from '../models/schema';
 import { eq } from 'drizzle-orm';
 import { PDFImageService, ExtractedDiagramImage } from './pdfImageService';
+
+// Cache for curriculum chapters to avoid repeated DB queries
+let pdfChaptersCache: Array<{ id: string; name: string; subjectId: string }> | null = null;
+let pdfChaptersCacheExpiry: number = 0;
+
+/**
+ * Normalize a string for comparison (used for chapter matching)
+ */
+function normalizeForComparison(str: string): string {
+  return str
+    .toLowerCase()
+    .replace(/[^\w\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Calculate similarity between two strings using Dice coefficient
+ */
+function stringSimilarity(str1: string, str2: string): number {
+  const s1 = normalizeForComparison(str1);
+  const s2 = normalizeForComparison(str2);
+
+  if (s1 === s2) return 1;
+  if (s1.length < 2 || s2.length < 2) return 0;
+
+  const bigrams1 = new Map<string, number>();
+  for (let i = 0; i < s1.length - 1; i++) {
+    const bigram = s1.substring(i, i + 2);
+    bigrams1.set(bigram, (bigrams1.get(bigram) || 0) + 1);
+  }
+
+  let intersectionSize = 0;
+  for (let i = 0; i < s2.length - 1; i++) {
+    const bigram = s2.substring(i, i + 2);
+    const count = bigrams1.get(bigram) || 0;
+    if (count > 0) {
+      bigrams1.set(bigram, count - 1);
+      intersectionSize++;
+    }
+  }
+
+  return (2.0 * intersectionSize) / (s1.length + s2.length - 2);
+}
+
+/**
+ * Find matching curriculum chapter for a topic
+ */
+async function findChapterMatch(
+  topic: string,
+  subject: string,
+  threshold: number = 0.7
+): Promise<string | null> {
+  if (!topic || topic.trim() === '') return null;
+
+  try {
+    const now = Date.now();
+    if (!pdfChaptersCache || now > pdfChaptersCacheExpiry) {
+      const chapters = await db
+        .select({
+          id: curriculumChapters.id,
+          name: curriculumChapters.name,
+          subjectId: curriculumChapters.subjectId,
+        })
+        .from(curriculumChapters);
+
+      pdfChaptersCache = chapters;
+      pdfChaptersCacheExpiry = now + 5 * 60 * 1000;
+      console.log(`📚 [PDFParser] Loaded ${chapters.length} chapters for matching`);
+    }
+
+    // Get subject ID
+    const subjectRecord = await db
+      .select({ id: subjects.id })
+      .from(subjects)
+      .where(eq(subjects.code, subject.toUpperCase()))
+      .limit(1);
+
+    const subjectId = subjectRecord[0]?.id;
+
+    let bestMatch: { id: string; score: number } | null = null;
+
+    for (const chapter of pdfChaptersCache!) {
+      const subjectBonus = chapter.subjectId === subjectId ? 0.1 : 0;
+      const score = stringSimilarity(topic, chapter.name) + subjectBonus;
+
+      if (score >= threshold && (!bestMatch || score > bestMatch.score)) {
+        bestMatch = { id: chapter.id, score };
+      }
+    }
+
+    if (bestMatch) {
+      const matched = pdfChaptersCache!.find((c) => c.id === bestMatch!.id);
+      console.log(`  📖 [PDFParser] Chapter matched: "${topic}" → "${matched?.name}"`);
+      return bestMatch.id;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('[PDFParser] Error finding chapter match:', error);
+    return null;
+  }
+}
 
 export interface ParsedChapter {
   chapterNumber: number;
@@ -1245,11 +1348,16 @@ export class PDFParserService {
       let savedCount = 0;
       let diagramCount = 0;
       let structuredDataCount = 0;
+      let chapterMatchedCount = 0;
 
       for (const q of parsedQuestions) {
         // Track stats
         if (q.hasDiagram) diagramCount++;
         if (q.structuredData) structuredDataCount++;
+
+        // Find matching curriculum chapter based on topic
+        const curriculumChapterId = await findChapterMatch(q.topic || '', q.subject);
+        if (curriculumChapterId) chapterMatchedCount++;
 
         await db.insert(questions).values({
           bookId: bookId,
@@ -1274,6 +1382,7 @@ export class PDFParserService {
           marksPositive: '4.00',
           marksNegative: '1.00',
           examYear: q.examYear,
+          curriculumChapterId, // Auto-matched chapter or null for manual assignment
           // Scraping method fields
           hasDiagram: q.hasDiagram || false,
           diagramDescription: q.diagramDescription,
@@ -1282,6 +1391,8 @@ export class PDFParserService {
         });
         savedCount++;
       }
+
+      console.log(`📖 Chapter matching: ${chapterMatchedCount}/${savedCount} questions matched`);
 
       // Update book status to completed
       await db
