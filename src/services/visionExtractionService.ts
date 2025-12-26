@@ -160,6 +160,129 @@ function normalizeSubject(subject: string | undefined | null): ValidSubjectCode 
   return 'physics';
 }
 
+/**
+ * Normalize a string for comparison (used for chapter matching)
+ */
+function normalizeStringForComparison(str: string): string {
+  return str
+    .toLowerCase()
+    .replace(/[^\w\s]/g, '') // Remove special characters
+    .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+    .trim();
+}
+
+/**
+ * Calculate similarity between two strings using Dice coefficient
+ * Returns a value between 0 (no similarity) and 1 (identical)
+ */
+function calculateStringSimilarity(str1: string, str2: string): number {
+  const s1 = normalizeStringForComparison(str1);
+  const s2 = normalizeStringForComparison(str2);
+
+  if (s1 === s2) return 1;
+  if (s1.length < 2 || s2.length < 2) return 0;
+
+  // Create bigrams
+  const bigrams1 = new Map<string, number>();
+  for (let i = 0; i < s1.length - 1; i++) {
+    const bigram = s1.substring(i, i + 2);
+    bigrams1.set(bigram, (bigrams1.get(bigram) || 0) + 1);
+  }
+
+  let intersectionSize = 0;
+  for (let i = 0; i < s2.length - 1; i++) {
+    const bigram = s2.substring(i, i + 2);
+    const count = bigrams1.get(bigram) || 0;
+    if (count > 0) {
+      bigrams1.set(bigram, count - 1);
+      intersectionSize++;
+    }
+  }
+
+  return (2.0 * intersectionSize) / (s1.length + s2.length - 2);
+}
+
+// Cache for curriculum chapters to avoid repeated DB queries
+let chaptersCache: Array<{ id: string; name: string; subjectId: string }> | null = null;
+let chaptersCacheExpiry: number = 0;
+
+/**
+ * Find matching curriculum chapter for a topic
+ * Returns the chapter ID if a good match is found, null otherwise
+ * @param topic - The topic/chapter name from the extracted question
+ * @param subject - The subject code (physics, chemistry, botany, zoology)
+ * @param threshold - Minimum similarity score to consider a match (default 0.7)
+ */
+async function findMatchingChapter(
+  topic: string,
+  subject: string,
+  threshold: number = 0.7
+): Promise<string | null> {
+  if (!topic || topic.trim() === '') {
+    return null;
+  }
+
+  try {
+    const { db } = require('../config/database');
+    const { curriculumChapters, subjects } = require('../models/schema');
+    const { eq } = require('drizzle-orm');
+
+    // Check cache validity (5 minutes)
+    const now = Date.now();
+    if (!chaptersCache || now > chaptersCacheExpiry) {
+      // Load all chapters with their subject info
+      const chapters = await db
+        .select({
+          id: curriculumChapters.id,
+          name: curriculumChapters.name,
+          subjectId: curriculumChapters.subjectId,
+        })
+        .from(curriculumChapters);
+
+      chaptersCache = chapters;
+      chaptersCacheExpiry = now + 5 * 60 * 1000; // 5 minutes
+      console.log(`📚 Loaded ${chapters.length} chapters into cache for matching`);
+    }
+
+    // Get subject ID for the given subject code
+    const subjectRecord = await db
+      .select({ id: subjects.id })
+      .from(subjects)
+      .where(eq(subjects.code, subject.toUpperCase()))
+      .limit(1);
+
+    const subjectId = subjectRecord[0]?.id;
+
+    // Find best matching chapter
+    let bestMatch: { id: string; score: number } | null = null;
+
+    for (const chapter of chaptersCache!) {
+      // Prioritize chapters from the same subject, but also check others
+      const subjectBonus = chapter.subjectId === subjectId ? 0.1 : 0;
+
+      const score = calculateStringSimilarity(topic, chapter.name) + subjectBonus;
+
+      if (score >= threshold && (!bestMatch || score > bestMatch.score)) {
+        bestMatch = { id: chapter.id, score };
+      }
+    }
+
+    if (bestMatch) {
+      const matchedChapter = chaptersCache!.find((c) => c.id === bestMatch!.id);
+      console.log(
+        `  📖 Chapter matched: "${topic}" → "${matchedChapter?.name}" (score: ${bestMatch.score.toFixed(2)})`
+      );
+      return bestMatch.id;
+    }
+
+    console.log(`  ⚠️ No chapter match found for topic: "${topic}" (threshold: ${threshold})`);
+    return null;
+  } catch (error) {
+    console.error('Error finding matching chapter:', error);
+    return null;
+  }
+}
+
 interface VisionAPIResponse {
   responses: Array<{
     fullTextAnnotation?: {
@@ -1866,12 +1989,16 @@ Please confirm that you can see Question ${questionNumber} and its associated di
               ? question.questionType
               : 'single_correct';
 
+            // Find matching curriculum chapter based on topic
+            const curriculumChapterId = await findMatchingChapter(question.topic, question.subject);
+
             await db.insert(questionsTable).values({
               bookId,
               ...question,
               questionImage: question.diagramImage || null, // Map diagramImage to questionImage field
               difficulty: validDifficulty,
               questionType: validQuestionType,
+              curriculumChapterId, // Auto-matched chapter or null for manual assignment
               isActive: false, // Draft - requires admin review before going live
             });
           }
@@ -2088,9 +2215,16 @@ Please confirm that you can see Question ${questionNumber} and its associated di
             ? question.questionType
             : 'single_correct';
 
+          // Find matching curriculum chapter based on topic
+          const normalizedSubject = normalizeSubject(question.subject);
+          const curriculumChapterId = await findMatchingChapter(
+            question.topic || 'Unknown',
+            normalizedSubject
+          );
+
           await db.insert(questionsTable).values({
             bookId: bookId,
-            subject: normalizeSubject(question.subject),
+            subject: normalizedSubject,
             topic: question.topic || 'Unknown',
             subtopic: question.subtopic || null,
             examYear: question.examYear || null,
@@ -2109,6 +2243,7 @@ Please confirm that you can see Question ${questionNumber} and its associated di
             explanation: question.explanation || null,
             difficulty: validDifficulty,
             questionNumber: question.questionNumber,
+            curriculumChapterId, // Auto-matched chapter or null for manual assignment
             isActive: false, // Draft - all questions require admin review before going live
             hasDiagram: question.hasDiagram || false,
             diagramDescription: question.diagramDescription || null,
