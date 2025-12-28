@@ -1999,6 +1999,16 @@ Please confirm that you can see Question ${questionNumber} and its associated di
             // Find matching curriculum chapter based on topic
             const curriculumChapterId = await findMatchingChapter(question.topic, question.subject);
 
+            // Delete existing question with same questionNumber for this book (prevents duplicates on re-extraction)
+            await db
+              .delete(questionsTable)
+              .where(
+                and(
+                  eq(questionsTable.bookId, bookId),
+                  eq(questionsTable.questionNumber, question.questionNumber)
+                )
+              );
+
             await db.insert(questionsTable).values({
               bookId,
               ...question,
@@ -2179,7 +2189,7 @@ Please confirm that you can see Question ${questionNumber} and its associated di
     // Import db and schema here to avoid circular dependencies
     const { db } = require('../config/database');
     const { books, questions: questionsTable } = require('../models/schema');
-    const { eq } = require('drizzle-orm');
+    const { eq, and } = require('drizzle-orm');
 
     try {
       // Get book details
@@ -2264,6 +2274,16 @@ Please confirm that you can see Question ${questionNumber} and its associated di
             question.topic || 'Unknown',
             normalizedSubject
           );
+
+          // Delete existing question with same questionNumber for this book (prevents duplicates on re-extraction)
+          await db
+            .delete(questionsTable)
+            .where(
+              and(
+                eq(questionsTable.bookId, bookId),
+                eq(questionsTable.questionNumber, question.questionNumber)
+              )
+            );
 
           await db.insert(questionsTable).values({
             bookId: bookId,

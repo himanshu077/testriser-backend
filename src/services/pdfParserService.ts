@@ -1135,27 +1135,48 @@ export class PDFParserService {
     console.log(`📏 Total text length: ${cleanText.length} characters`);
 
     // Multiple regex patterns to handle different question formats
+    // Lookahead boundary: matches next question number, section headers (various formats), subject names, or end of text
+    // Updated to handle headers like "Botany : Section-A", "Physics", "Chemistry", "SECTION", etc.
+    const sectionBoundary =
+      '\\d{1,3}\\.|SECTION|Section|Physics|Chemistry|Biology|Botany|Zoology|Q\\.\\s*No\\.|Contd';
+
     // Pattern 1: Standard NEET format - tight spacing
-    const pattern1 =
-      /(\d{1,3})\.[\s\n]+(.+?)[\s\n]+\(1\)[\s\n]*(.+?)[\s\n]+\(2\)[\s\n]*(.+?)[\s\n]+\(3\)[\s\n]*(.+?)[\s\n]+\(4\)[\s\n]*(.+?)(?=\n\s*\d{1,3}\.|\n{3,}|SECTION|$)/gis;
+    const pattern1 = new RegExp(
+      `(\\d{1,3})\\.[\\s\\n]+(.+?)[\\s\\n]+\\(1\\)[\\s\\n]*(.+?)[\\s\\n]+\\(2\\)[\\s\\n]*(.+?)[\\s\\n]+\\(3\\)[\\s\\n]*(.+?)[\\s\\n]+\\(4\\)[\\s\\n]*(.+?)(?=\\n\\s*${sectionBoundary}|\\n{3,}|$)`,
+      'gis'
+    );
 
     // Pattern 2: Format with possible diagram gaps (more permissive)
-    const pattern2 =
-      /(\d{1,3})\.[\s\n]+(.+?)[\s\n]*\(1\)[\s\n]*(.+?)[\s\n]*\(2\)[\s\n]*(.+?)[\s\n]*\(3\)[\s\n]*(.+?)[\s\n]*\(4\)[\s\n]*(.+?)(?=\n\s*\d{1,3}\.|\n{3,}|SECTION|$)/gis;
+    const pattern2 = new RegExp(
+      `(\\d{1,3})\\.[\\s\\n]+(.+?)[\\s\\n]*\\(1\\)[\\s\\n]*(.+?)[\\s\\n]*\\(2\\)[\\s\\n]*(.+?)[\\s\\n]*\\(3\\)[\\s\\n]*(.+?)[\\s\\n]*\\(4\\)[\\s\\n]*(.+?)(?=\\n\\s*${sectionBoundary}|\\n{3,}|$)`,
+      'gis'
+    );
 
     // Pattern 3: Minimal format - allows very large gaps for diagrams
-    const pattern3 =
-      /(\d{1,3})\.(.+?)\(1\)(.+?)\(2\)(.+?)\(3\)(.+?)\(4\)(.+?)(?=\d{1,3}\.|SECTION|$)/gis;
+    const pattern3 = new RegExp(
+      `(\\d{1,3})\\.(.+?)\\(1\\)(.+?)\\(2\\)(.+?)\\(3\\)(.+?)\\(4\\)(.+?)(?=${sectionBoundary}|$)`,
+      'gis'
+    );
 
     // Pattern 4: Ultra-permissive - for questions with extensive diagrams/tables
-    const pattern4 =
-      /(\d{1,3})\.\s*(.+?)\s*\(1\)\s*(.+?)\s*\(2\)\s*(.+?)\s*\(3\)\s*(.+?)\s*\(4\)\s*(.+?)(?=\s*\d{1,3}\.\s|\s*SECTION|\s*$)/gis;
+    const pattern4 = new RegExp(
+      `(\\d{1,3})\\.\\s*(.+?)\\s*\\(1\\)\\s*(.+?)\\s*\\(2\\)\\s*(.+?)\\s*\\(3\\)\\s*(.+?)\\s*\\(4\\)\\s*(.+?)(?=\\s*${sectionBoundary}|\\s*$)`,
+      'gis'
+    );
 
     // Pattern 5: Match questions where options might have line breaks within them
-    const pattern5 =
-      /(\d{1,3})\.[\s\S]{1,1500}?\(1\)[\s\S]{1,500}?\(2\)[\s\S]{1,500}?\(3\)[\s\S]{1,500}?\(4\)[\s\S]{1,500}?(?=\d{1,3}\.|SECTION|$)/gis;
+    const pattern5 = new RegExp(
+      `(\\d{1,3})\\.[\\s\\S]{1,1500}?\\(1\\)[\\s\\S]{1,500}?\\(2\\)[\\s\\S]{1,500}?\\(3\\)[\\s\\S]{1,500}?\\(4\\)[\\s\\S]{1,500}?(?=${sectionBoundary}|$)`,
+      'gis'
+    );
 
-    const patterns = [pattern1, pattern2, pattern3, pattern4, pattern5];
+    // Pattern 6: Fallback for questions at section boundaries - captures up to next clear boundary
+    const pattern6 = new RegExp(
+      `(\\d{1,3})\\.\\s*([\\s\\S]{10,800}?)\\s*\\(1\\)\\s*([\\s\\S]{1,300}?)\\s*\\(2\\)\\s*([\\s\\S]{1,300}?)\\s*\\(3\\)\\s*([\\s\\S]{1,300}?)\\s*\\(4\\)\\s*([\\s\\S]{1,300}?)(?=\\s*(?:\\d{1,3}\\.|${sectionBoundary}|\\[|Page|$))`,
+      'gis'
+    );
+
+    const patterns = [pattern1, pattern2, pattern3, pattern4, pattern5, pattern6];
     const extractedQuestions = new Set<number>(); // Track question numbers to avoid duplicates
     let match: RegExpExecArray | null;
 
