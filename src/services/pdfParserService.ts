@@ -1,8 +1,111 @@
 import fs from 'fs';
 import { db } from '../config/database';
-import { books, questions } from '../models/schema';
+import { books, questions, curriculumChapters, subjects } from '../models/schema';
 import { eq } from 'drizzle-orm';
 import { PDFImageService, ExtractedDiagramImage } from './pdfImageService';
+
+// Cache for curriculum chapters to avoid repeated DB queries
+let pdfChaptersCache: Array<{ id: string; name: string; subjectId: string }> | null = null;
+let pdfChaptersCacheExpiry: number = 0;
+
+/**
+ * Normalize a string for comparison (used for chapter matching)
+ */
+function normalizeForComparison(str: string): string {
+  return str
+    .toLowerCase()
+    .replace(/[^\w\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Calculate similarity between two strings using Dice coefficient
+ */
+function stringSimilarity(str1: string, str2: string): number {
+  const s1 = normalizeForComparison(str1);
+  const s2 = normalizeForComparison(str2);
+
+  if (s1 === s2) return 1;
+  if (s1.length < 2 || s2.length < 2) return 0;
+
+  const bigrams1 = new Map<string, number>();
+  for (let i = 0; i < s1.length - 1; i++) {
+    const bigram = s1.substring(i, i + 2);
+    bigrams1.set(bigram, (bigrams1.get(bigram) || 0) + 1);
+  }
+
+  let intersectionSize = 0;
+  for (let i = 0; i < s2.length - 1; i++) {
+    const bigram = s2.substring(i, i + 2);
+    const count = bigrams1.get(bigram) || 0;
+    if (count > 0) {
+      bigrams1.set(bigram, count - 1);
+      intersectionSize++;
+    }
+  }
+
+  return (2.0 * intersectionSize) / (s1.length + s2.length - 2);
+}
+
+/**
+ * Find matching curriculum chapter for a topic
+ */
+async function findChapterMatch(
+  topic: string,
+  subject: string,
+  threshold: number = 0.7
+): Promise<string | null> {
+  if (!topic || topic.trim() === '') return null;
+
+  try {
+    const now = Date.now();
+    if (!pdfChaptersCache || now > pdfChaptersCacheExpiry) {
+      const chapters = await db
+        .select({
+          id: curriculumChapters.id,
+          name: curriculumChapters.name,
+          subjectId: curriculumChapters.subjectId,
+        })
+        .from(curriculumChapters);
+
+      pdfChaptersCache = chapters;
+      pdfChaptersCacheExpiry = now + 5 * 60 * 1000;
+      console.log(`📚 [PDFParser] Loaded ${chapters.length} chapters for matching`);
+    }
+
+    // Get subject ID
+    const subjectRecord = await db
+      .select({ id: subjects.id })
+      .from(subjects)
+      .where(eq(subjects.code, subject.toUpperCase()))
+      .limit(1);
+
+    const subjectId = subjectRecord[0]?.id;
+
+    let bestMatch: { id: string; score: number } | null = null;
+
+    for (const chapter of pdfChaptersCache!) {
+      const subjectBonus = chapter.subjectId === subjectId ? 0.1 : 0;
+      const score = stringSimilarity(topic, chapter.name) + subjectBonus;
+
+      if (score >= threshold && (!bestMatch || score > bestMatch.score)) {
+        bestMatch = { id: chapter.id, score };
+      }
+    }
+
+    if (bestMatch) {
+      const matched = pdfChaptersCache!.find((c) => c.id === bestMatch!.id);
+      console.log(`  📖 [PDFParser] Chapter matched: "${topic}" → "${matched?.name}"`);
+      return bestMatch.id;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('[PDFParser] Error finding chapter match:', error);
+    return null;
+  }
+}
 
 export interface ParsedChapter {
   chapterNumber: number;
@@ -1032,27 +1135,48 @@ export class PDFParserService {
     console.log(`📏 Total text length: ${cleanText.length} characters`);
 
     // Multiple regex patterns to handle different question formats
+    // Lookahead boundary: matches next question number, section headers (various formats), subject names, or end of text
+    // Updated to handle headers like "Botany : Section-A", "Physics", "Chemistry", "SECTION", etc.
+    const sectionBoundary =
+      '\\d{1,3}\\.|SECTION|Section|Physics|Chemistry|Biology|Botany|Zoology|Q\\.\\s*No\\.|Contd';
+
     // Pattern 1: Standard NEET format - tight spacing
-    const pattern1 =
-      /(\d{1,3})\.[\s\n]+(.+?)[\s\n]+\(1\)[\s\n]*(.+?)[\s\n]+\(2\)[\s\n]*(.+?)[\s\n]+\(3\)[\s\n]*(.+?)[\s\n]+\(4\)[\s\n]*(.+?)(?=\n\s*\d{1,3}\.|\n{3,}|SECTION|$)/gis;
+    const pattern1 = new RegExp(
+      `(\\d{1,3})\\.[\\s\\n]+(.+?)[\\s\\n]+\\(1\\)[\\s\\n]*(.+?)[\\s\\n]+\\(2\\)[\\s\\n]*(.+?)[\\s\\n]+\\(3\\)[\\s\\n]*(.+?)[\\s\\n]+\\(4\\)[\\s\\n]*(.+?)(?=\\n\\s*${sectionBoundary}|\\n{3,}|$)`,
+      'gis'
+    );
 
     // Pattern 2: Format with possible diagram gaps (more permissive)
-    const pattern2 =
-      /(\d{1,3})\.[\s\n]+(.+?)[\s\n]*\(1\)[\s\n]*(.+?)[\s\n]*\(2\)[\s\n]*(.+?)[\s\n]*\(3\)[\s\n]*(.+?)[\s\n]*\(4\)[\s\n]*(.+?)(?=\n\s*\d{1,3}\.|\n{3,}|SECTION|$)/gis;
+    const pattern2 = new RegExp(
+      `(\\d{1,3})\\.[\\s\\n]+(.+?)[\\s\\n]*\\(1\\)[\\s\\n]*(.+?)[\\s\\n]*\\(2\\)[\\s\\n]*(.+?)[\\s\\n]*\\(3\\)[\\s\\n]*(.+?)[\\s\\n]*\\(4\\)[\\s\\n]*(.+?)(?=\\n\\s*${sectionBoundary}|\\n{3,}|$)`,
+      'gis'
+    );
 
     // Pattern 3: Minimal format - allows very large gaps for diagrams
-    const pattern3 =
-      /(\d{1,3})\.(.+?)\(1\)(.+?)\(2\)(.+?)\(3\)(.+?)\(4\)(.+?)(?=\d{1,3}\.|SECTION|$)/gis;
+    const pattern3 = new RegExp(
+      `(\\d{1,3})\\.(.+?)\\(1\\)(.+?)\\(2\\)(.+?)\\(3\\)(.+?)\\(4\\)(.+?)(?=${sectionBoundary}|$)`,
+      'gis'
+    );
 
     // Pattern 4: Ultra-permissive - for questions with extensive diagrams/tables
-    const pattern4 =
-      /(\d{1,3})\.\s*(.+?)\s*\(1\)\s*(.+?)\s*\(2\)\s*(.+?)\s*\(3\)\s*(.+?)\s*\(4\)\s*(.+?)(?=\s*\d{1,3}\.\s|\s*SECTION|\s*$)/gis;
+    const pattern4 = new RegExp(
+      `(\\d{1,3})\\.\\s*(.+?)\\s*\\(1\\)\\s*(.+?)\\s*\\(2\\)\\s*(.+?)\\s*\\(3\\)\\s*(.+?)\\s*\\(4\\)\\s*(.+?)(?=\\s*${sectionBoundary}|\\s*$)`,
+      'gis'
+    );
 
     // Pattern 5: Match questions where options might have line breaks within them
-    const pattern5 =
-      /(\d{1,3})\.[\s\S]{1,1500}?\(1\)[\s\S]{1,500}?\(2\)[\s\S]{1,500}?\(3\)[\s\S]{1,500}?\(4\)[\s\S]{1,500}?(?=\d{1,3}\.|SECTION|$)/gis;
+    const pattern5 = new RegExp(
+      `(\\d{1,3})\\.[\\s\\S]{1,1500}?\\(1\\)[\\s\\S]{1,500}?\\(2\\)[\\s\\S]{1,500}?\\(3\\)[\\s\\S]{1,500}?\\(4\\)[\\s\\S]{1,500}?(?=${sectionBoundary}|$)`,
+      'gis'
+    );
 
-    const patterns = [pattern1, pattern2, pattern3, pattern4, pattern5];
+    // Pattern 6: Fallback for questions at section boundaries - captures up to next clear boundary
+    const pattern6 = new RegExp(
+      `(\\d{1,3})\\.\\s*([\\s\\S]{10,800}?)\\s*\\(1\\)\\s*([\\s\\S]{1,300}?)\\s*\\(2\\)\\s*([\\s\\S]{1,300}?)\\s*\\(3\\)\\s*([\\s\\S]{1,300}?)\\s*\\(4\\)\\s*([\\s\\S]{1,300}?)(?=\\s*(?:\\d{1,3}\\.|${sectionBoundary}|\\[|Page|$))`,
+      'gis'
+    );
+
+    const patterns = [pattern1, pattern2, pattern3, pattern4, pattern5, pattern6];
     const extractedQuestions = new Set<number>(); // Track question numbers to avoid duplicates
     let match: RegExpExecArray | null;
 
@@ -1245,11 +1369,16 @@ export class PDFParserService {
       let savedCount = 0;
       let diagramCount = 0;
       let structuredDataCount = 0;
+      let chapterMatchedCount = 0;
 
       for (const q of parsedQuestions) {
         // Track stats
         if (q.hasDiagram) diagramCount++;
         if (q.structuredData) structuredDataCount++;
+
+        // Find matching curriculum chapter based on topic
+        const curriculumChapterId = await findChapterMatch(q.topic || '', q.subject);
+        if (curriculumChapterId) chapterMatchedCount++;
 
         await db.insert(questions).values({
           bookId: bookId,
@@ -1274,6 +1403,7 @@ export class PDFParserService {
           marksPositive: '4.00',
           marksNegative: '1.00',
           examYear: q.examYear,
+          curriculumChapterId, // Auto-matched chapter or null for manual assignment
           // Scraping method fields
           hasDiagram: q.hasDiagram || false,
           diagramDescription: q.diagramDescription,
@@ -1282,6 +1412,8 @@ export class PDFParserService {
         });
         savedCount++;
       }
+
+      console.log(`📖 Chapter matching: ${chapterMatchedCount}/${savedCount} questions matched`);
 
       // Update book status to completed
       await db

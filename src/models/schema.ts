@@ -210,6 +210,7 @@ export const books = pgTable('books', {
   pyqType: pyqTypeEnum('pyq_type'), // Subject-wise or Full length (only for PYQ books)
   uploadStatus: bookUploadStatusEnum('upload_status').notNull().default('pending'),
   totalQuestionsExtracted: integer('total_questions_extracted').default(0),
+  expectedQuestions: integer('expected_questions').default(200), // Expected total questions in this book (varies by book type)
   extractionProgress: integer('extraction_progress').default(0), // 0-100%
   currentStep: varchar('current_step', { length: 100 }), // e.g., 'Extracting page 5/27'
   uploadedBy: uuid('uploaded_by').references(() => users.id, { onDelete: 'set null' }),

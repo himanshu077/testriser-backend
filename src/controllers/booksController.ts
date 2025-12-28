@@ -360,7 +360,16 @@ export async function getBookQuestions(req: Request, res: Response) {
 export async function updateBook(req: Request, res: Response) {
   try {
     const { id } = req.params;
-    const { title, description, subject, examName, examYear, pyqType, startProcessing } = req.body;
+    const {
+      title,
+      description,
+      subject,
+      examName,
+      examYear,
+      pyqType,
+      startProcessing,
+      expectedQuestions,
+    } = req.body;
 
     // Check if book exists
     const [book] = await db.select().from(books).where(eq(books.id, id)).limit(1);
@@ -386,6 +395,8 @@ export async function updateBook(req: Request, res: Response) {
         examYear: examYear !== undefined ? examYear : book.examYear,
         pyqType:
           pyqType !== undefined ? (pyqType as 'subject_wise' | 'full_length' | null) : book.pyqType,
+        expectedQuestions:
+          expectedQuestions !== undefined ? expectedQuestions : book.expectedQuestions,
         updatedAt: new Date(),
       })
       .where(eq(books.id, id))

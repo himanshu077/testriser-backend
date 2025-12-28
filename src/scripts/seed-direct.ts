@@ -441,51 +441,60 @@ async function seed() {
         for (const chapter of curriculumItem.chapters) {
           const slug = createSlug(chapter.name);
 
-          await sql`
-            INSERT INTO curriculum_chapters (
-              subject_id,
-              chapter_number,
-              name,
-              slug,
-              grade_level,
-              status,
-              is_active,
-              is_published,
-              syllabus_year,
-              estimated_hours,
-              weightage,
-              display_order,
-              total_questions,
-              pyq_count,
-              easy_count,
-              medium_count,
-              hard_count,
-              created_at,
-              updated_at
-            )
-            VALUES (
-              ${subjectId},
-              ${chapter.number},
-              ${chapter.name},
-              ${slug},
-              ${curriculumItem.grade},
-              'active',
-              true,
-              true,
-              2024,
-              ${chapter.estimatedHours || 10},
-              ${chapter.weightage || 2},
-              ${displayOrder++},
-              0,
-              0,
-              0,
-              0,
-              0,
-              NOW(),
-              NOW()
-            )
-            ON CONFLICT (subject_id, grade_level, chapter_number) DO NOTHING
+          // Check if chapter already exists
+          const existingChapter = await sql`
+            SELECT id FROM curriculum_chapters
+            WHERE subject_id = ${subjectId}
+              AND grade_level = ${curriculumItem.grade}
+              AND chapter_number = ${chapter.number}
           `;
+
+          if (existingChapter.length === 0) {
+            await sql`
+              INSERT INTO curriculum_chapters (
+                subject_id,
+                chapter_number,
+                name,
+                slug,
+                grade_level,
+                status,
+                is_active,
+                is_published,
+                syllabus_year,
+                estimated_hours,
+                weightage,
+                display_order,
+                total_questions,
+                pyq_count,
+                easy_count,
+                medium_count,
+                hard_count,
+                created_at,
+                updated_at
+              )
+              VALUES (
+                ${subjectId},
+                ${chapter.number},
+                ${chapter.name},
+                ${slug},
+                ${curriculumItem.grade},
+                'active',
+                true,
+                true,
+                2024,
+                ${chapter.estimatedHours || 10},
+                ${chapter.weightage || 2},
+                ${displayOrder++},
+                0,
+                0,
+                0,
+                0,
+                0,
+                NOW(),
+                NOW()
+              )
+            `;
+          }
 
           totalChaptersInserted++;
           console.log(`    ✓ Ch ${chapter.number}: ${chapter.name}`);
