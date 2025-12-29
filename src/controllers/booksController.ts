@@ -691,6 +691,7 @@ export async function getBookExtractionReport(req: Request, res: Response) {
     // Format page results
     const byPage = pageResults.map((page) => ({
       pageNumber: page.pageNumber,
+      pageImagePath: page.pageImagePath, // Add page image path for display
       status: page.status,
       questionsExtracted: page.questionsExtracted,
       expectedRange: page.expectedQuestionRange,
