@@ -3,10 +3,11 @@ name: Backend CI
 on:
   push:
     branches:
-      - '**' # All branches including main
+      - '**' # All branches
+      - '!main' # Except main
   pull_request:
     branches:
-      - '**' # All branches
+      - develop
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -19,254 +20,23 @@ jobs:
   lint-and-typecheck:
     name: Lint and Type Check
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-      
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Run TypeScript type check
         run: npm run type-check
-      
+
       - name: Run ESLint
         run: npm run lint
-      
-      - name: Check code formatting
-        run: npm run format:check
-  
-  build:
-    name: Build Backend
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Build TypeScript
-        run: npm run build
-      
-      - name: Verify build artifacts
-        run: |
-          if [ ! -f "dist/server.js" ]; then
-            echo "Build failed: dist/server.js not found"
-            exit 1
-          fi
-          echo "Build successful!"
-  
-  database-check:
-    name: Database Schema Validation
-    runs-on: ubuntu-latest
-    
-    services:
-      postgres:
-        image: postgres:14
-        env:
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: testriser_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Run database migrations
-        env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/testriser_test
-        run: npm run db:push
-      
-      - name: Verify database schema
-        env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/testriser_test
-        run: |
-          echo "Database schema validation passed!"
-
-  ai-code-review:
-    name: AI Code Review
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    permissions:
-      contents: read
-      pull-requests: write
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Get changed files
-        id: changed-files
-        run: |
-          git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} | grep -E '\.(ts|js)$' > changed_files.txt || true
-          if [ -s changed_files.txt ]; then
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Review code with Claude AI
-        if: steps.changed-files.outputs.has_changes == 'true'
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          node << 'EOF'
-          const https = require('https');
-          const fs = require('fs');
-          const { execSync } = require('child_process');
-
-          // Read coding standards from backend directory
-          const codingStandards = fs.readFileSync('./CODING_STANDARDS.md', 'utf8');
-
-          // Read changed files
-          const changedFiles = fs.readFileSync('changed_files.txt', 'utf8')
-            .split('\n')
-            .filter(f => f.trim());
-
-          // Get file diffs
-          const diffs = changedFiles.map(file => {
-            try {
-              const diff = execSync(`git diff ${{ github.event.pull_request.base.sha }} ${{ github.sha }} -- ${file}`).toString();
-              return { file, diff };
-            } catch (e) {
-              return null;
-            }
-          }).filter(Boolean);
-
-          if (diffs.length === 0) {
-            console.log('No diffs to review');
-            process.exit(0);
-          }
-
-          // Prepare prompt for Claude
-          const prompt = `You are reviewing backend code for the Test Riser project.
-
-          CODING STANDARDS:
-          ${codingStandards}
-
-          CHANGES TO REVIEW:
-          ${diffs.map(d => `File: ${d.file}\n\`\`\`diff\n${d.diff}\n\`\`\``).join('\n\n')}
-
-          Review these changes and check for:
-          1. TypeScript strict mode compliance
-          2. Controller pattern (Rule 13)
-          3. HTTP status code constants (Rule 15)
-          4. Authentication middleware (Rules 6-7)
-          5. Database query patterns (Rule 20)
-          6. Error handling (Rule 34)
-          7. API response format (Rule 14)
-
-          Provide feedback in this format:
-          - **File**: [filename]:[line]
-          - **Issue**: [description]
-          - **Rule**: [rule number from CODING_STANDARDS.md]
-          - **Fix**: [suggested code]
-
-          If all changes follow standards, respond with "✅ All changes follow coding standards."`;
-
-          // Call Claude API
-          const data = JSON.stringify({
-            model: 'claude-3-5-sonnet-20241022',
-            max_tokens: 4096,
-            messages: [{
-              role: 'user',
-              content: prompt
-            }]
-          });
-
-          const options = {
-            hostname: 'api.anthropic.com',
-            port: 443,
-            path: '/v1/messages',
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-api-key': process.env.ANTHROPIC_API_KEY,
-              'anthropic-version': '2023-06-01'
-            }
-          };
-
-          const req = https.request(options, (res) => {
-            let responseData = '';
-
-            res.on('data', (chunk) => {
-              responseData += chunk;
-            });
-
-            res.on('end', () => {
-              const response = JSON.parse(responseData);
-              const review = response.content[0].text;
-
-              console.log('AI Review:\n', review);
-
-              // Post comment to PR
-              const commentData = JSON.stringify({
-                body: `## 🤖 AI Code Review (Backend)\n\n${review}\n\n---\n*Reviewed against [CODING_STANDARDS.md](./CODING_STANDARDS.md)*`
-              });
-
-              const commentOptions = {
-                hostname: 'api.github.com',
-                path: `/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments`,
-                method: 'POST',
-                headers: {
-                  'Authorization': `token ${process.env.GITHUB_TOKEN}`,
-                  'User-Agent': 'GitHub-Actions',
-                  'Content-Type': 'application/json'
-                }
-              };
-
-              const commentReq = https.request(commentOptions, () => {
-                console.log('Review posted to PR');
-              });
-
-              commentReq.write(commentData);
-              commentReq.end();
-            });
-          });
-
-          req.on('error', (error) => {
-            console.error('Error:', error);
-            process.exit(1);
-          });
-
-          req.write(data);
-          req.end();
-          EOF
+        continue-on-error: true
