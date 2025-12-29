@@ -713,9 +713,7 @@ export async function getBookExtractionReport(req: Request, res: Response) {
         pageRange: `${section.startPage}-${section.endPage}`,
         pages: sectionPages.map((p) => ({
           page: p.pageNumber,
-          pageImagePath: p.pageImagePath, // Add page image path for display
           status: p.status,
-          questions: p.questionsExtracted,
         })),
         expected: section.expectedQuestions,
         extracted: section.extractedQuestions,
