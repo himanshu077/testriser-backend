@@ -1139,16 +1139,28 @@ Return ONLY a JSON array of questions, nothing else.`;
 
   /**
    * Sanitize JSON string to fix common escaping issues from GPT responses
+   * Specifically handles LaTeX formulas and other unescaped backslashes
    */
   private sanitizeJSON(jsonString: string): string {
+    // Strategy: Escape ALL backslashes first, then fix valid JSON escape sequences
     return (
       jsonString
-        // Fix unescaped backslashes (except already escaped ones and valid escape sequences)
-        // This regex matches backslashes NOT followed by: ", \, /, b, f, n, r, t, or u[4 hex digits]
-        .replace(/\\(?!["\\/bfnrt]|u[0-9a-fA-F]{4})/g, '\\\\')
         // Remove BOM or invisible characters
         .replace(/^\uFEFF/, '')
         .trim()
+        // Step 1: Escape all backslashes by doubling them
+        .replace(/\\/g, '\\\\')
+        // Step 2: Fix over-escaped valid JSON escape sequences
+        // Valid sequences: \\ \" \/ \b \f \n \r \t \uXXXX
+        .replace(/\\\\\\\\/g, '\\\\') // \\\\ -> \\ (already escaped backslash)
+        .replace(/\\\\"/g, '\\"') // \\" -> \" (quote)
+        .replace(/\\\\\//g, '\\/') // \\/ -> \/ (forward slash)
+        .replace(/\\\\b/g, '\\b') // \\b -> \b (backspace)
+        .replace(/\\\\f/g, '\\f') // \\f -> \f (form feed)
+        .replace(/\\\\n/g, '\\n') // \\n -> \n (newline)
+        .replace(/\\\\r/g, '\\r') // \\r -> \r (carriage return)
+        .replace(/\\\\t/g, '\\t') // \\t -> \t (tab)
+        .replace(/\\\\u([0-9a-fA-F]{4})/g, '\\u$1') // \\uXXXX -> \uXXXX (unicode)
     );
   }
 
