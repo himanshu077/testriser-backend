@@ -1096,7 +1096,25 @@ Return ONLY a JSON array of questions, nothing else.`;
         return [];
       }
 
-      const questions: ExtractedQuestion[] = JSON.parse(jsonMatch[0]);
+      // Parse JSON with error handling and sanitization fallback
+      let questions: ExtractedQuestion[];
+      try {
+        questions = JSON.parse(jsonMatch[0]);
+      } catch (parseError: any) {
+        console.error(`   ⚠️  JSON parse error on page ${pageNumber}:`, parseError.message);
+        console.error(`   📝 Problematic JSON (first 500 chars):`, jsonMatch[0].substring(0, 500));
+
+        // Try sanitization
+        try {
+          const sanitized = this.sanitizeJSON(jsonMatch[0]);
+          questions = JSON.parse(sanitized);
+          console.log(`   ✅ Recovered from JSON error using sanitization`);
+        } catch (sanitizeError: any) {
+          console.error(`   ❌ Failed even after sanitization:`, sanitizeError.message);
+          console.error(`   📄 Full response for debugging:`, text);
+          return [];
+        }
+      }
 
       // Validate and fix numbering for section restarts
       const validatedQuestions = questions.map((q) => {
@@ -1117,6 +1135,21 @@ Return ONLY a JSON array of questions, nothing else.`;
       console.error(`Error analyzing page ${pageNumber} with GPT-4 Vision:`, error);
       return [];
     }
+  }
+
+  /**
+   * Sanitize JSON string to fix common escaping issues from GPT responses
+   */
+  private sanitizeJSON(jsonString: string): string {
+    return (
+      jsonString
+        // Fix unescaped backslashes (except already escaped ones and valid escape sequences)
+        // This regex matches backslashes NOT followed by: ", \, /, b, f, n, r, t, or u[4 hex digits]
+        .replace(/\\(?!["\\/bfnrt]|u[0-9a-fA-F]{4})/g, '\\\\')
+        // Remove BOM or invisible characters
+        .replace(/^\uFEFF/, '')
+        .trim()
+    );
   }
 
   /**
