@@ -1931,6 +1931,9 @@ Please confirm that you can see Question ${questionNumber} and its associated di
           continue;
         }
 
+        // Get local file path (downloads from S3 if needed, or converts local URL to absolute path)
+        let absoluteFilePath: string | undefined;
+
         try {
           // Update page status to processing
           await db
@@ -1938,12 +1941,22 @@ Please confirm that you can see Question ${questionNumber} and its associated di
             .set({ status: 'processing' })
             .where(eq(pageExtractionResults.id, page.id));
 
-          // Convert URL path back to absolute file system path
-          // URL path: /temp-vision/bookId/page-01.png
-          // Absolute path: D:\...\backend\temp-vision\bookId\page-01.png
-          const backendDir = path.join(__dirname, '../..');
-          const relativeFilePath = page.pageImagePath.substring(1).replace(/\//g, path.sep); // Remove leading '/' and convert to OS separators
-          const absoluteFilePath = path.join(backendDir, relativeFilePath);
+          if (page.pageImagePath.startsWith('http')) {
+            // Production: S3 URL - download to temp directory
+            const { getLocalFilePath } = require('../utils/fileStorage.util');
+            absoluteFilePath = await getLocalFilePath(page.pageImagePath);
+          } else {
+            // Development: Local URL path - convert to absolute file system path
+            // URL path: /temp-vision/bookId/page-01.png
+            // Absolute path: D:\...\backend\temp-vision\bookId\page-01.png
+            const backendDir = path.join(__dirname, '../..');
+            const relativeFilePath = page.pageImagePath.substring(1).replace(/\//g, path.sep);
+            absoluteFilePath = path.join(backendDir, relativeFilePath);
+          }
+
+          if (!absoluteFilePath) {
+            throw new Error('Failed to resolve page image path');
+          }
 
           // Analyze page with Vision API to extract questions
           const questions = await service.analyzePageWithVision(
@@ -2029,8 +2042,24 @@ Please confirm that you can see Question ${questionNumber} and its associated di
               extractedQuestions: JSON.stringify(questions.map((q) => q.questionNumber)),
             })
             .where(eq(pageExtractionResults.id, page.id));
+
+          // Clean up temp file if it was downloaded from S3
+          if (page.pageImagePath.startsWith('http')) {
+            const { cleanupTempFile } = require('../utils/fileStorage.util');
+            cleanupTempFile(absoluteFilePath);
+          }
         } catch (error: any) {
           console.error(`❌ Error processing page ${page.pageNumber}:`, error);
+
+          // Clean up temp file if it was downloaded from S3 (even on error)
+          if (page.pageImagePath.startsWith('http') && absoluteFilePath) {
+            const { cleanupTempFile } = require('../utils/fileStorage.util');
+            try {
+              cleanupTempFile(absoluteFilePath);
+            } catch (cleanupError) {
+              console.error('⚠️  Failed to cleanup temp file:', cleanupError);
+            }
+          }
 
           // Update page status to failed
           await db
