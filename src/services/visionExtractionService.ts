@@ -2311,7 +2311,9 @@ Please confirm that you can see Question ${questionNumber} and its associated di
             hasDiagram: question.hasDiagram || false,
             diagramDescription: question.diagramDescription || null,
             structuredData: question.structuredData
-              ? JSON.stringify(question.structuredData)
+              ? typeof question.structuredData === 'string'
+                ? question.structuredData // Already a string
+                : JSON.stringify(question.structuredData)
               : null,
           });
 
