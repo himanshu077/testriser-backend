@@ -1,8 +1,64 @@
 import { Request, Response } from 'express';
 import { db } from '../config/database';
 import { questions, studentExams, studentAnswers } from '../models/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { testSessionService } from '../services/testSessionService';
+
+/**
+ * Get year-wise question statistics
+ * GET /api/year-tests/stats
+ * Returns available years with question counts for NEET PYQ Archives
+ */
+export const getYearStats = async (_req: Request, res: Response) => {
+  try {
+    // Get year-wise question counts (only active questions)
+    const yearStats = await db
+      .select({
+        examYear: questions.examYear,
+        questionCount: sql<number>`count(*)::int`,
+      })
+      .from(questions)
+      .where(eq(questions.isActive, true))
+      .groupBy(questions.examYear);
+
+    // Convert to a map for easy lookup
+    const statsMap: Record<number, { questionCount: number; hasQuestions: boolean }> = {};
+
+    yearStats.forEach((stat) => {
+      if (stat.examYear) {
+        statsMap[stat.examYear] = {
+          questionCount: stat.questionCount,
+          hasQuestions: stat.questionCount > 0,
+        };
+      }
+    });
+
+    // Generate stats for all years from 2000 to 2025
+    const allYears = [];
+    for (let year = 2025; year >= 2000; year--) {
+      const stat = statsMap[year];
+      allYears.push({
+        year,
+        name: year >= 2013 ? `NEET ${year}` : `AIPMT ${year}`,
+        questionCount: stat?.questionCount || 0,
+        hasQuestions: stat?.hasQuestions || false,
+        duration: 180, // 3 hours in minutes
+      });
+    }
+
+    res.json({
+      success: true,
+      data: allYears,
+    });
+  } catch (error: any) {
+    console.error('Error fetching year stats:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch year statistics',
+      error: error.message,
+    });
+  }
+};
 
 /**
  * Generate a year-wise full-length test (180 questions)
@@ -48,12 +104,21 @@ export const generateYearTest = async (req: Request, res: Response) => {
     const zoology = allQuestions.filter((q) => q.subject === 'Zoology').slice(0, 45);
 
     // Combine in order: Physics, Chemistry, Botany, Zoology
-    const testQuestions = [...physics, ...chemistry, ...botany, ...zoology];
+    let testQuestions = [...physics, ...chemistry, ...botany, ...zoology];
 
-    if (testQuestions.length < 180) {
+    // For years with different question counts (e.g., 2025 has 180 questions)
+    // If we don't have exactly 180 but have enough questions, use all available
+    const minRequired = examYear >= 2025 ? 180 : 180;
+
+    if (testQuestions.length < minRequired) {
+      // Try using all questions for that year regardless of subject distribution
+      testQuestions = allQuestions.slice(0, minRequired);
+    }
+
+    if (testQuestions.length < minRequired) {
       return res.status(400).json({
         success: false,
-        message: `Insufficient questions for full test. Available: ${testQuestions.length}/180`,
+        message: `Insufficient questions for full test. Available: ${testQuestions.length}/${minRequired}`,
       });
     }
 
