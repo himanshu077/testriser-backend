@@ -9,6 +9,7 @@ import {
   updateBook,
   deleteBook,
   retryProcessing,
+  reexportQuestions,
   streamBookProgress,
   getBookExtractionReport,
   getBookPages,
@@ -182,6 +183,35 @@ router.delete('/:id', authenticate, requireRole(['admin']), deleteBook);
  */
 
 router.post('/:id/retry', authenticate, requireRole(['admin']), retryProcessing);
+
+// Re-export questions (deletes existing and re-processes)
+// POST /api/admin/books/:id/reexport
+/**
+ * @swagger
+ * /api/admin/books/{id}/reexport:
+ *   post:
+ *     summary: Re-export questions from book
+ *     description: Deletes existing questions for the book and re-processes to extract them again
+ *     tags: [Books]
+ *     security:
+ *       - adminAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Re-export started successfully
+ *       400:
+ *         description: Bad request - book not in completed status
+ *       404:
+ *         description: Book not found
+ *       500:
+ *         description: Server error
+ */
+router.post('/:id/reexport', authenticate, requireRole(['admin']), reexportQuestions);
 
 // Stream book progress updates (Server-Sent Events)
 // GET /api/admin/books/:id/progress/stream?token=xxx

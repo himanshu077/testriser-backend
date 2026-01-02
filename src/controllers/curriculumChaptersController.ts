@@ -30,7 +30,10 @@ export const getAllChapters = async (req: Request, res: Response) => {
     const conditions: any[] = [];
 
     if (subject) {
-      conditions.push(eq(subjects.code, subject as string));
+      // Case-insensitive match on subject code or name
+      conditions.push(
+        sql`(LOWER(${subjects.code}) = LOWER(${subject as string}) OR LOWER(${subjects.name}) = LOWER(${subject as string}))`
+      );
     }
 
     if (grade) {

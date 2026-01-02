@@ -2043,20 +2043,43 @@ Please confirm that you can see Question ${questionNumber} and its associated di
         }
       }
 
-      // Update book's total questions count
+      // Update book's total questions count and status
       const [{ count: totalQuestions }] = await db
         .select({ count: require('drizzle-orm').sql`COUNT(*)::int` })
         .from(questionsTable)
         .where(eq(questionsTable.bookId, bookId));
 
+      // Check if all pages have been processed (not pending/processing)
+      const [{ pendingCount }] = await db
+        .select({ pendingCount: require('drizzle-orm').sql`COUNT(*)::int` })
+        .from(pageExtractionResults)
+        .where(
+          and(
+            eq(pageExtractionResults.bookId, bookId),
+            require('drizzle-orm').sql`${pageExtractionResults.status} IN ('pending', 'processing')`
+          )
+        );
+
+      // If no pending/processing pages, mark book as completed
+      const allPagesProcessed = pendingCount === 0;
+
       await db
         .update(books)
         .set({
           totalQuestionsExtracted: totalQuestions,
+          ...(allPagesProcessed && {
+            uploadStatus: 'completed',
+            extractionProgress: 100,
+            currentStep: 'Completed',
+            processingCompletedAt: new Date(),
+          }),
         })
         .where(eq(books.id, bookId));
 
       console.log(`\n✅ Completed processing ${pageNumbers.length} page(s)`);
+      if (allPagesProcessed) {
+        console.log(`📚 Book processing complete! Total questions: ${totalQuestions}`);
+      }
     } catch (error: any) {
       console.error('❌ Process specific pages error:', error);
       throw error;

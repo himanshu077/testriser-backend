@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { db } from '../config/database';
-import { questions, books } from '../models/schema';
+import { questions, books, subjects, curriculumChapters } from '../models/schema';
 import { eq, and, desc, asc, isNotNull, isNull, sql } from 'drizzle-orm';
 import { HTTP_STATUS } from '../config/constants';
 import { PDFParserService } from '../services/pdfParserService';
@@ -16,6 +16,65 @@ import {
 import { shouldUseS3 } from '../config/s3';
 import fs from 'fs';
 import path from 'path';
+
+/**
+ * Look up subject ID by name or code (case-insensitive)
+ */
+async function lookupSubjectId(subjectNameOrCode: string): Promise<string | null> {
+  if (!subjectNameOrCode || subjectNameOrCode.trim() === '') return null;
+
+  try {
+    const normalizedInput = subjectNameOrCode.toLowerCase().trim();
+
+    // Try matching by code first, then by name (case-insensitive)
+    const subjectRecords = await db
+      .select({ id: subjects.id, name: subjects.name, code: subjects.code })
+      .from(subjects);
+
+    const matchedSubject = subjectRecords.find(
+      (s) => s.code.toLowerCase() === normalizedInput || s.name.toLowerCase() === normalizedInput
+    );
+
+    return matchedSubject?.id || null;
+  } catch (error) {
+    console.error('[QuestionsController] Error looking up subject:', error);
+    return null;
+  }
+}
+
+/**
+ * Find matching curriculum chapter for a topic (filtered by subject)
+ */
+async function lookupChapterId(topic: string, subjectId: string | null): Promise<string | null> {
+  if (!topic || topic.trim() === '' || !subjectId) return null;
+
+  try {
+    // Get chapters for the subject
+    const chaptersForSubject = await db
+      .select({ id: curriculumChapters.id, name: curriculumChapters.name })
+      .from(curriculumChapters)
+      .where(eq(curriculumChapters.subjectId, subjectId));
+
+    // Simple string similarity matching (case-insensitive)
+    const normalizedTopic = topic.toLowerCase().trim();
+
+    for (const chapter of chaptersForSubject) {
+      const normalizedChapterName = chapter.name.toLowerCase().trim();
+      // Check if topic contains chapter name or vice versa
+      if (
+        normalizedChapterName.includes(normalizedTopic) ||
+        normalizedTopic.includes(normalizedChapterName)
+      ) {
+        return chapter.id;
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error('[QuestionsController] Error looking up chapter:', error);
+    return null;
+  }
+}
 
 /**
  * Get all questions (with optional filters, sorting, and pagination)
@@ -54,9 +113,25 @@ export async function getAllQuestions(req: Request, res: Response) {
 
     const conditions = [];
 
-    // Subject filter
+    // Subject filter - lookup by code or name
     if (subject && subject !== 'all') {
-      conditions.push(eq(questions.subject, subject as string));
+      // First, find the subject by code or name (case-insensitive)
+      const normalizedSubject = (subject as string).toLowerCase().trim();
+      const [subjectRecord] = await db
+        .select({ id: subjects.id })
+        .from(subjects)
+        .where(
+          sql`LOWER(${subjects.code}) = ${normalizedSubject} OR LOWER(${subjects.name}) = ${normalizedSubject}`
+        )
+        .limit(1);
+
+      if (subjectRecord) {
+        // Filter by subjectId if available
+        conditions.push(eq(questions.subjectId, subjectRecord.id));
+      } else {
+        // Fallback to legacy subject name filter (case-insensitive)
+        conditions.push(sql`LOWER(${questions.subject}) = ${normalizedSubject}`);
+      }
     }
 
     // Topic filter
@@ -309,11 +384,16 @@ export async function createQuestion(req: Request, res: Response) {
       });
     }
 
+    // Look up subject ID and chapter ID from database
+    const subjectId = await lookupSubjectId(subject);
+    const curriculumChapterId = await lookupChapterId(topic, subjectId);
+
     const [newQuestion] = await db
       .insert(questions)
       .values({
         paperId,
         subject,
+        subjectId, // Store subject ID from subjects table
         topic,
         subtopic,
         questionText,
@@ -334,6 +414,7 @@ export async function createQuestion(req: Request, res: Response) {
         marksNegative: marksNegative || '1.00',
         difficulty: difficulty || 'medium',
         questionNumber,
+        curriculumChapterId, // Store chapter ID from curriculum_chapters table
       })
       .returning();
 
@@ -521,11 +602,18 @@ export async function uploadPDFQuestions(req: Request, res: Response) {
         }
       }
 
+      // Look up subject ID and chapter ID from database
+      const finalSubject = (enhancedMetadata?.subject || subject) as string;
+      const finalTopic = enhancedMetadata?.topic || topic || q.topic || '';
+      const subjectId = await lookupSubjectId(finalSubject);
+      const curriculumChapterId = await lookupChapterId(finalTopic, subjectId);
+
       const [savedQuestion] = await db
         .insert(questions)
         .values({
-          subject: (enhancedMetadata?.subject || subject) as 'physics' | 'chemistry' | 'biology',
-          topic: enhancedMetadata?.topic || topic || q.topic || '',
+          subject: finalSubject as 'physics' | 'chemistry' | 'biology',
+          subjectId, // Store subject ID from subjects table
+          topic: finalTopic,
           subtopic: enhancedMetadata?.subtopic || q.subtopic || null,
           paperId: paperId || null,
           questionText: q.questionText,
@@ -543,6 +631,7 @@ export async function uploadPDFQuestions(req: Request, res: Response) {
           questionNumber: savedQuestions.length + 1,
           examYear: q.examYear || null,
           examType: q.examType || null,
+          curriculumChapterId, // Store chapter ID from curriculum_chapters table
         })
         .returning();
 

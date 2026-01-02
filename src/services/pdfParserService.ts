@@ -8,6 +8,54 @@ import { PDFImageService, ExtractedDiagramImage } from './pdfImageService';
 let pdfChaptersCache: Array<{ id: string; name: string; subjectId: string }> | null = null;
 let pdfChaptersCacheExpiry: number = 0;
 
+// Cache for subjects to avoid repeated DB queries
+let subjectsCache: Array<{ id: string; name: string; code: string }> | null = null;
+let subjectsCacheExpiry: number = 0;
+
+/**
+ * Look up subject ID by name or code (case-insensitive)
+ */
+async function findSubjectId(subjectNameOrCode: string): Promise<string | null> {
+  if (!subjectNameOrCode || subjectNameOrCode.trim() === '') return null;
+
+  try {
+    const now = Date.now();
+    if (!subjectsCache || now > subjectsCacheExpiry) {
+      const allSubjects = await db
+        .select({
+          id: subjects.id,
+          name: subjects.name,
+          code: subjects.code,
+        })
+        .from(subjects);
+
+      subjectsCache = allSubjects;
+      subjectsCacheExpiry = now + 5 * 60 * 1000; // Cache for 5 minutes
+      console.log(`📚 [PDFParser] Loaded ${allSubjects.length} subjects for matching`);
+    }
+
+    const normalizedInput = subjectNameOrCode.toLowerCase().trim();
+
+    // Find subject by code or name (case-insensitive)
+    const matchedSubject = subjectsCache.find(
+      (s) => s.code.toLowerCase() === normalizedInput || s.name.toLowerCase() === normalizedInput
+    );
+
+    if (matchedSubject) {
+      console.log(
+        `  📖 [PDFParser] Subject matched: "${subjectNameOrCode}" → "${matchedSubject.name}" (ID: ${matchedSubject.id})`
+      );
+      return matchedSubject.id;
+    }
+
+    console.log(`  ⚠️ [PDFParser] No subject match found for: "${subjectNameOrCode}"`);
+    return null;
+  } catch (error) {
+    console.error('[PDFParser] Error finding subject:', error);
+    return null;
+  }
+}
+
 /**
  * Normalize a string for comparison (used for chapter matching)
  */
@@ -49,11 +97,11 @@ function stringSimilarity(str1: string, str2: string): number {
 }
 
 /**
- * Find matching curriculum chapter for a topic
+ * Find matching curriculum chapter for a topic (filtered by subject)
  */
 async function findChapterMatch(
   topic: string,
-  subject: string,
+  subjectId: string | null,
   threshold: number = 0.7
 ): Promise<string | null> {
   if (!topic || topic.trim() === '') return null;
@@ -74,20 +122,15 @@ async function findChapterMatch(
       console.log(`📚 [PDFParser] Loaded ${chapters.length} chapters for matching`);
     }
 
-    // Get subject ID
-    const subjectRecord = await db
-      .select({ id: subjects.id })
-      .from(subjects)
-      .where(eq(subjects.code, subject.toUpperCase()))
-      .limit(1);
-
-    const subjectId = subjectRecord[0]?.id;
-
     let bestMatch: { id: string; score: number } | null = null;
 
-    for (const chapter of pdfChaptersCache!) {
-      const subjectBonus = chapter.subjectId === subjectId ? 0.1 : 0;
-      const score = stringSimilarity(topic, chapter.name) + subjectBonus;
+    // Filter chapters by subject if subjectId is provided
+    const chaptersToSearch = subjectId
+      ? pdfChaptersCache!.filter((c) => c.subjectId === subjectId)
+      : pdfChaptersCache!;
+
+    for (const chapter of chaptersToSearch) {
+      const score = stringSimilarity(topic, chapter.name);
 
       if (score >= threshold && (!bestMatch || score > bestMatch.score)) {
         bestMatch = { id: chapter.id, score };
@@ -1370,19 +1413,25 @@ export class PDFParserService {
       let diagramCount = 0;
       let structuredDataCount = 0;
       let chapterMatchedCount = 0;
+      let subjectMatchedCount = 0;
 
       for (const q of parsedQuestions) {
         // Track stats
         if (q.hasDiagram) diagramCount++;
         if (q.structuredData) structuredDataCount++;
 
-        // Find matching curriculum chapter based on topic
-        const curriculumChapterId = await findChapterMatch(q.topic || '', q.subject);
+        // Look up subject ID from subject table (case-insensitive match)
+        const subjectId = await findSubjectId(q.subject);
+        if (subjectId) subjectMatchedCount++;
+
+        // Find matching curriculum chapter based on topic (filtered by subject)
+        const curriculumChapterId = await findChapterMatch(q.topic || '', subjectId);
         if (curriculumChapterId) chapterMatchedCount++;
 
         await db.insert(questions).values({
           bookId: bookId,
           subject: q.subject,
+          subjectId, // Store subject ID from subjects table
           topic: q.topic || '',
           subtopic: q.subtopic,
           questionText: q.questionText,
@@ -1403,7 +1452,7 @@ export class PDFParserService {
           marksPositive: '4.00',
           marksNegative: '1.00',
           examYear: q.examYear,
-          curriculumChapterId, // Auto-matched chapter or null for manual assignment
+          curriculumChapterId, // Auto-matched chapter (filtered by subject) or null for manual assignment
           // Scraping method fields
           hasDiagram: q.hasDiagram || false,
           diagramDescription: q.diagramDescription,
@@ -1413,6 +1462,7 @@ export class PDFParserService {
         savedCount++;
       }
 
+      console.log(`📖 Subject matching: ${subjectMatchedCount}/${savedCount} questions matched`);
       console.log(`📖 Chapter matching: ${chapterMatchedCount}/${savedCount} questions matched`);
 
       // Update book status to completed

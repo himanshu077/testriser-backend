@@ -15,6 +15,13 @@
       "when": 1766836994613,
       "tag": "0001_heavy_shriek",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1767334620155,
+      "tag": "0002_chilly_bishop",
+      "breakpoints": true
     }
   ]
 }

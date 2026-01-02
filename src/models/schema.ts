@@ -296,7 +296,8 @@ export const questions = pgTable('questions', {
   curriculumChapterId: uuid('curriculum_chapter_id').references(() => curriculumChapters.id, {
     onDelete: 'set null',
   }), // Link to curriculum chapter
-  subject: varchar('subject', { length: 50 }).notNull(),
+  subjectId: uuid('subject_id').references(() => subjects.id, { onDelete: 'set null' }), // Foreign key to subjects table
+  subject: varchar('subject', { length: 50 }).notNull(), // Legacy field - subject name for backward compatibility
   topic: varchar('topic', { length: 255 }).notNull(), // e.g., "Mechanics", "Organic Chemistry"
   subtopic: varchar('subtopic', { length: 255 }), // e.g., "Newton's Laws", "Alkanes"
   examYear: integer('exam_year'), // Year extracted from exam marker, e.g., 2020 from [NEET (Sep.) 2020]
