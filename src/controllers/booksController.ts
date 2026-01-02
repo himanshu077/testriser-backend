@@ -555,6 +555,72 @@ export async function retryProcessing(req: Request, res: Response) {
 }
 
 /**
+ * Re-export questions - deletes existing questions and re-processes the book
+ * POST /api/admin/books/:id/reexport
+ */
+export async function reexportQuestions(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+
+    // Check if book exists
+    const [book] = await db.select().from(books).where(eq(books.id, id)).limit(1);
+
+    if (!book) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        error: 'Not Found',
+        message: 'Book not found',
+      });
+    }
+
+    // Check if book is in completed status
+    if (book.uploadStatus !== 'completed') {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        error: 'Bad Request',
+        message: `Book must be in completed status to re-export. Current status: ${book.uploadStatus}`,
+      });
+    }
+
+    // Delete existing questions for this book
+    const deleteResult = await db
+      .delete(questions)
+      .where(eq(questions.bookId, id))
+      .returning({ id: questions.id });
+
+    const deletedCount = deleteResult.length;
+    console.log(`Deleted ${deletedCount} existing questions for book ${id}`);
+
+    // Reset book status to trigger re-processing
+    await db
+      .update(books)
+      .set({
+        uploadStatus: 'pending',
+        errorMessage: null,
+        processingStartedAt: null,
+        processingCompletedAt: null,
+        totalQuestionsExtracted: 0,
+        extractionProgress: 0,
+        currentStep: 'Queued for re-export',
+      })
+      .where(eq(books.id, id));
+
+    // Start async processing
+    VisionExtractionService.processBookAsync(id);
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      message: `Deleted ${deletedCount} existing questions and started re-export. This may take a few minutes.`,
+      deletedQuestions: deletedCount,
+    });
+  } catch (error: any) {
+    console.error('Re-export questions error:', error);
+    res.status(HTTP_STATUS.SERVER_ERROR).json({
+      error: 'Internal Server Error',
+      message: error.message,
+    });
+  }
+}
+
+/**
  * Stream book progress updates using Server-Sent Events
  * GET /api/admin/books/:id/progress/stream
  */
