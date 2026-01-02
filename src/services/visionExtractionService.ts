@@ -2017,6 +2017,12 @@ Please confirm that you can see Question ${questionNumber} and its associated di
               questionType: validQuestionType,
               curriculumChapterId, // Auto-matched chapter or null for manual assignment
               isActive: false, // Draft - requires admin review before going live
+              // Properly serialize structuredData to JSON string
+              structuredData: question.structuredData
+                ? typeof question.structuredData === 'string'
+                  ? question.structuredData
+                  : JSON.stringify(question.structuredData)
+                : null,
             });
           }
 
